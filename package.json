@@ -20,7 +20,7 @@
   "dependencies": {
     "@clerk/localizations": "^4.24.3",
     "@clerk/react": "6.18.3",
-    "@supabase/ssr": "0.12.7",
+    "@supabase/ssr": "0.10.3",
     "@supabase/supabase-js": "2.118.0",
     "date-fns": "4.4.0",
     "date-fns-tz": "3.2.0",
