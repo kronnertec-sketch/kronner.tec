@@ -232,33 +232,43 @@ export default function Dashboard(){
   data?.recurring.filter(r=>r.variable&&r.active).forEach(r=>notices.push({title:'Confira o valor deste mês',text:r.name+' · vencimento dia '+r.day,tab:'finance'}));
 
   const shopDay=formatInTimeZone(new Date(),data?.shop.cfg.timezone||'America/Sao_Paulo','yyyy-MM-dd');
-  const holidays=pendingHolidays(
-    shopDay,
-    cfg.holidayDecisions,
-    cfg.state,
-    (data?.calendar||[]).map((ev:Row)=>({date:ev.day,name:ev.name,scope:ev.scope}))
-  );
-  for(const item of holidays)notices.push({
-    title:item.stage===7?'Feriado nesta semana':item.stage===14?'Feriado nas próximas duas semanas':'Feriado nos próximos 30 dias',
-    text:item.name+' · '+item.date.split('-').reverse().join('/')+' · '+item.scope,
-    tab:'notices',
-    holiday:item.date,
-    holidayName:item.name
-  });
+  const calendarEvents=(data?.calendar||[]).map((ev:Row)=>({date:ev.day,name:ev.name,scope:ev.scope}));
+  const holidays=pendingHolidays(shopDay,cfg.holidayDecisions,cfg.state,calendarEvents);
+  const allUpcomingHolidays=pendingHolidays(shopDay,{},cfg.state,calendarEvents);
+  for(const item of allUpcomingHolidays){
+    const decision=cfg.holidayDecisions?.[item.date]||null;
+    const statusText=decision==='open'
+      ?' · Decisão atual: Vou trabalhar (você pode alterar a qualquer momento)'
+      :decision==='closed'
+        ?' · Decisão atual: Não vou trabalhar (agenda fechada nesta data)'
+        :'';
+    notices.push({
+      title:item.stage===7?'Feriado nesta semana':item.stage===14?'Feriado nas próximas duas semanas':'Feriado nos próximos 30 dias',
+      text:item.name+' · '+item.date.split('-').reverse().join('/')+' · '+item.scope+statusText,
+      tab:'notices',
+      holiday:item.date,
+      holidayName:item.name,
+      holidayDecision:decision
+    });
+  }
+  const unreadNoticesCount=notices.filter(n=>!n.holidayDecision).length;
 
   async function decideHoliday(holidayDate:string,decision:'open'|'closed'){
     const nextCfg:Row={...cfg,holidayDecisions:{...(cfg.holidayDecisions||{}),[holidayDate]:decision}};
     C(nextCfg);
+    const msg=decision==='open'
+      ?'Salvo: você vai trabalhar. O feriado continua na aba de Avisos caso queira mudar de ideia, sem novos alertas.'
+      :'Salvo: agenda fechada no feriado. Ele continua na aba de Avisos caso queira mudar sua escolha.';
     if(data?.shop.active){
       const normalized=phone(nextCfg.phone||data.shop.cfg.phone||'34999990000');
       const ok=await mutate('settings',{name,cfg:{...settingsValues(nextCfg),phone:normalized,setupStep:step},activate:true},false);
       if(ok){
-        Toast(decision==='open'?'Confirmado: você vai trabalhar neste feriado.':'Confirmado: agenda fechada neste feriado.');
-        setTimeout(()=>Toast(''),4000);
+        Toast(msg);
+        setTimeout(()=>Toast(''),5000);
       }
     }else{
-      Toast(decision==='open'?'Decisão anotada: vou trabalhar.':'Decisão anotada: não vou trabalhar.');
-      setTimeout(()=>Toast(''),4000);
+      Toast(msg);
+      setTimeout(()=>Toast(''),5000);
     }
   }
 
@@ -433,7 +443,7 @@ export default function Dashboard(){
               }}
             >
               <Icon size={19}/>{label}
-              {id==='notices'&&notices.length>0&&<span className="count">{notices.length}</span>}
+              {id==='notices'&&unreadNoticesCount>0&&<span className="count">{unreadNoticesCount}</span>}
             </button>
           ))}
         </nav>
@@ -448,7 +458,7 @@ export default function Dashboard(){
           <button className="mobile-menu" onClick={()=>MENU(!menu)} aria-label="Abrir menu"><Menu/></button>
           <span>Kroner <ChevronRight size={14}/> {title}</span>
           <div>
-            <button aria-label="Abrir avisos" onClick={()=>T('notices')}><Bell size={20}/>{notices.length>0&&<i/>}</button>
+            <button aria-label="Abrir avisos" onClick={()=>T('notices')}><Bell size={20}/>{unreadNoticesCount>0&&<i/>}</button>
             <span className="avatar">{cfg.professional?.slice(0,1)||'K'}</span>
           </div>
         </header>
@@ -967,15 +977,32 @@ export default function Dashboard(){
 
           {tab==='notices'&&(
             <>
-              <p>Os avisos são internos. Pendências continuam aqui até serem resolvidas.</p>
+              <p>Os avisos são internos. Os feriados permanecem listados aqui para você consultar ou alterar sua decisão quando precisar, sem repetir alertas na tela.</p>
               {notices.map((n,i)=>(
                 <div className={'card notification '+(n.danger?'warning':'')} key={i}>
                   <Bell size={22}/>
-                  <div><h3>{n.title}</h3><p>{n.text}</p></div>
+                  <div>
+                    <h3>{n.title}</h3>
+                    <p>{n.text}</p>
+                  </div>
                   {n.holiday?(
                     <div className="actions" style={{margin:0}}>
-                      <button type="button" className="btn primary" disabled={busy} onClick={()=>decideHoliday(n.holiday,'open')}>Vou trabalhar</button>
-                      <button type="button" className="btn" disabled={busy} onClick={()=>decideHoliday(n.holiday,'closed')}>Não vou trabalhar</button>
+                      <button
+                        type="button"
+                        className={'btn '+(n.holidayDecision==='open'?'primary':'')}
+                        disabled={busy}
+                        onClick={()=>decideHoliday(n.holiday,'open')}
+                      >
+                        {n.holidayDecision==='open'?'✓ Vou trabalhar':'Vou trabalhar'}
+                      </button>
+                      <button
+                        type="button"
+                        className={'btn '+(n.holidayDecision==='closed'?'primary':'')}
+                        disabled={busy}
+                        onClick={()=>decideHoliday(n.holiday,'closed')}
+                      >
+                        {n.holidayDecision==='closed'?'✓ Não vou trabalhar':'Não vou trabalhar'}
+                      </button>
                     </div>
                   ):(
                     <button className="btn" onClick={()=>T(n.tab)}>Conferir</button>
@@ -1130,17 +1157,6 @@ export default function Dashboard(){
                         <h3>Seu link fixo</h3>
                         <div className="link-box">{url}</div>
                         <button className="btn" onClick={()=>copy(url)}>Copiar link</button>
-                        <h3>Feriados e exceções</h3>
-                        <p>Confira também feriados municipais, estaduais e datas móveis. Para fechar um dia, use “Bloquear período” na agenda.</p>
-                        {notices.filter(n=>n.holiday).map(n=>(
-                          <div className="line" key={n.holiday}>
-                            <span>{n.text}</span>
-                            <div className="actions" style={{margin:0}}>
-                              <button type="button" className="btn primary" disabled={busy} onClick={()=>decideHoliday(n.holiday,'open')}>Vou trabalhar</button>
-                              <button type="button" className="btn" disabled={busy} onClick={()=>decideHoliday(n.holiday,'closed')}>Não vou trabalhar</button>
-                            </div>
-                          </div>
-                        ))}
                       </>
                     )}
                   </>
