@@ -453,7 +453,14 @@ export default function Dashboard(){
                     <button className="text-btn" onClick={()=>T('agenda')}>Ver agenda →</button>
                   </div>
                   {data.appointments.filter(a=>a.status==='booked'&&a.starts>=new Date().toISOString()).slice(0,5).map(a=>(
-                    <div className="appointment-preview" key={a.id}>
+                    <div
+                      role="button"
+                      tabIndex={0}
+                      onClick={()=>{D(localDay(a.starts));setSelectedAptId(a.id);T('agenda');}}
+                      onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){D(localDay(a.starts));setSelectedAptId(a.id);T('agenda');}}}
+                      className="appointment-preview clickable-preview"
+                      key={a.id}
+                    >
                       <b>{at(a.starts)}</b>
                       <span>
                         <strong>{client(a.client)}</strong>
@@ -999,6 +1006,31 @@ export default function Dashboard(){
                         <label key={key}>{label}<input type="number" min="0" value={cfg[key]} onChange={e=>C({...cfg,[key]:e.target.value})}/></label>
                       ))}
                     </div>
+                    <div className="review" style={{marginBottom:16}}>
+                      <label className="checkbox" style={{marginBottom:8}}>
+                        <input
+                          type="checkbox"
+                          checked={Number(cfg.buffer??10)>0}
+                          onChange={e=>C({...cfg,buffer:e.target.checked?(Number(cfg.buffer)>0?cfg.buffer:10):0})}
+                        />
+                        <strong>Ativar intervalo de segurança entre atendimentos</strong>
+                      </label>
+                      <p style={{margin:'0 0 12px',fontSize:13}}>
+                        Esse tempo extra fica reservado automaticamente após cada atendimento caso você gaste mais tempo do que o horário programado, evitando atrasar o próximo cliente.
+                      </p>
+                      {Number(cfg.buffer??10)>0&&(
+                        <label style={{maxWidth:280,marginBottom:0}}>
+                          Tempo de segurança (minutos)
+                          <input
+                            type="number"
+                            min="1"
+                            max="180"
+                            value={cfg.buffer??10}
+                            onChange={e=>C({...cfg,buffer:e.target.value})}
+                          />
+                        </label>
+                      )}
+                    </div>
                     <div className="notice">O último atendimento deve terminar até o encerramento. Sem almoço, manhã termina às 11h; tarde vai até 18h; noite começa às 18h, respeitando o expediente.</div>
                     {data.shop.active&&<div className="notice">Mudanças no expediente não cancelam reservas existentes. Confira a agenda e remarque os atendimentos afetados.</div>}
                   </>
@@ -1088,7 +1120,36 @@ export default function Dashboard(){
           )}
         </main>
         <footer className="app-footer">Tempo para o seu talento.</footer>
-      </div>
+        <nav className="mobile-bottom-nav" aria-label="Navegação rápida">
+            {[
+              ['overview','Início',LayoutDashboard],
+              ['agenda','Agenda',CalendarDays],
+              ['clients','Clientes',Users],
+              ['finance','Financeiro',Wallet]
+            ].map(([id,lbl,Icon]:any)=>(
+              <button
+                key={id}
+                type="button"
+                className={tab===id?'active':''}
+                onClick={()=>{
+                  if(!data.shop.active&&id!=='settings'){
+                    Toast('Conclua e ative as configurações da barbearia para liberar esta área.');
+                    setTimeout(()=>Toast(''),4000);
+                    return;
+                  }
+                  T(id);
+                }}
+              >
+                <Icon size={18}/>
+                <span>{lbl}</span>
+              </button>
+            ))}
+            <button type="button" onClick={()=>MENU(true)}>
+              <Menu size={18}/>
+              <span>Mais</span>
+            </button>
+          </nav>
+        </div>
 
       {tour>=0&&(
         <div className="overlay">

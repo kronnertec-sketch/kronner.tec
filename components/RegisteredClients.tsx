@@ -20,5 +20,65 @@ export default function RegisteredClients({data, day}:{data:Workspace; day:strin
     const flags=[debts.some(c=>!c.due||c.due>=day),debts.some(c=>c.due && c.due<cutoff),!!last && last<cutoff,data.memberships.some(m=>m.client===client.id && m.active)];
     return {client,last,flags,balance:debts.reduce((sum,c)=>sum+c.balance,0)};
   }).filter(row=>selected.every(f=>row.flags[filters.indexOf(f)]));
-  return <section className="card"><label>Buscar cliente<input value={name} onChange={e=>setName(e.target.value)} /></label><div className="actions"><button className="btn" aria-pressed={!selected.length} onClick={()=>setSelected([])}>Todos</button>{filters.map(f=><label key={f}><input type="checkbox" checked={selected.includes(f)} onChange={()=>setSelected(selected.includes(f)?selected.filter(x=>x!==f):[...selected,f])}/>{f}</label>)}</div><div className="table-wrap"><table><thead><tr><th>Cliente</th><th>Telefone</th><th>Último atendimento</th><th>Saldo a receber</th></tr></thead><tbody>{rows.map(({client,last,balance})=><tr key={client.id}><td>{client.name}</td><td>{client.phone}</td><td>{last?last.split('-').reverse().join('/'):'Ainda não atendido'}</td><td>{money(balance)}</td></tr>)}</tbody></table></div>{!rows.length&&<p>Nenhum cliente cadastrado corresponde à busca.</p>}</section>;
+  return (
+    <section className="card">
+      <div className="split" style={{marginBottom:16}}>
+        <div>
+          <h2>Base de clientes com conta</h2>
+          <p style={{margin:'4px 0 0'}}>Clientes que entraram pelo seu link de agendamento e criaram conta na Kroner.</p>
+        </div>
+        <span className="badge">{rows.length} {rows.length===1?'cliente':'clientes'}</span>
+      </div>
+      <div className="toolbar" style={{marginBottom:16}}>
+        <label style={{flex:1,maxWidth:360}}>Buscar por nome ou telefone
+          <input placeholder="Digite o nome do cliente…" value={name} onChange={e=>setName(e.target.value)} />
+        </label>
+        <div className="filter-pills" role="group" aria-label="Filtros de clientes">
+          <button type="button" className={'filter-pill '+(!selected.length?'active':'')} aria-pressed={!selected.length} onClick={()=>setSelected([])}>Todos</button>
+          {filters.map(f=>(
+            <button
+              type="button"
+              key={f}
+              className={'filter-pill '+(selected.includes(f)?'active':'')}
+              aria-pressed={selected.includes(f)}
+              onClick={()=>setSelected(selected.includes(f)?selected.filter(x=>x!==f):[...selected,f])}
+            >
+              {f}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="table-wrap">
+        <table>
+          <thead><tr><th>Cliente</th><th>Telefone</th><th>Último atendimento</th><th>Saldo a receber</th><th>Contato</th></tr></thead>
+          <tbody>
+            {rows.map(({client,last,balance,flags})=>(
+              <tr key={client.id}>
+                <td>
+                  <strong>{client.name}</strong>
+                  {flags[3]&&<span className="badge" style={{marginLeft:8}}>Mensalista</span>}
+                </td>
+                <td>{client.phone}</td>
+                <td>{last?last.split('-').reverse().join('/'):'Ainda não atendido'}</td>
+                <td><span className={balance>0?'badge warn':'badge green'}>{balance>0?money(balance):'Em dia'}</span></td>
+                <td>
+                  {client.phone&&(
+                    <a
+                      className="btn small"
+                      href={'https://wa.me/'+client.phone.replace(/\D/g,'')}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      WhatsApp ↗
+                    </a>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {!rows.length&&<p style={{textAlign:'center',padding:'24px 0'}}>Nenhum cliente cadastrado corresponde à busca.</p>}
+    </section>
+  );
 }

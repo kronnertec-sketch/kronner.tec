@@ -1981,3 +1981,153 @@ input, select, textarea {
   margin-bottom: 6px;
   font-weight: 500;
 }
+
+/* ==========================================
+   UX / UI Interactive Polish
+   ========================================== */
+.ux-accordion {
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: var(--bg);
+  margin-bottom: 12px;
+  overflow: hidden;
+}
+
+.ux-accordion > summary {
+  list-style: none;
+  padding: 14px 18px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 17px;
+  color: var(--ink);
+  background: var(--panel);
+  transition: background .15s;
+}
+
+.ux-accordion > summary::-webkit-details-marker {
+  display: none;
+}
+
+.ux-accordion > summary::after {
+  content: '+';
+  font-family: 'Inter', sans-serif;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--blue);
+}
+
+.ux-accordion[open] > summary {
+  background: var(--selected);
+  color: var(--blue);
+  border-bottom: 1px solid var(--line);
+}
+
+.ux-accordion[open] > summary::after {
+  content: '−';
+}
+
+.ux-accordion-body {
+  padding: 18px;
+  background: var(--surface);
+}
+
+.ux-fieldset {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin: 0 0 14px;
+  background: var(--bg);
+}
+
+.ux-fieldset > legend {
+  font-family: 'Barlow Semi Condensed', sans-serif;
+  font-weight: 600;
+  font-size: 16px;
+  color: var(--ink);
+  padding: 0 6px;
+}
+
+.filter-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.filter-pill {
+  border: 1px solid var(--line);
+  background: var(--panel);
+  color: var(--muted);
+  border-radius: 999px;
+  padding: 7px 14px;
+  font-size: 12px;
+  font-weight: 500;
+  transition: background .15s, color .15s, border-color .15s;
+}
+
+.filter-pill:hover {
+  background: var(--selected);
+  color: var(--blue);
+}
+
+.filter-pill.active {
+  background: var(--selected);
+  color: var(--blue);
+  border-color: var(--blue);
+  font-weight: 600;
+}
+
+.clickable-preview {
+  cursor: pointer;
+  border-radius: 9px;
+  padding: 14px 12px;
+  margin: 0 -12px;
+  transition: background .15s;
+}
+
+.clickable-preview:hover {
+  background: var(--selected);
+}
+
+.mobile-bottom-nav {
+  display: none;
+}
+
+@media (max-width: 760px) {
+  .workspace {
+    padding-bottom: 68px;
+  }
+  .mobile-bottom-nav {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 64px;
+    background: var(--surface);
+    border-top: 1px solid var(--line);
+    z-index: 45;
+    padding: 4px 6px;
+  }
+  .mobile-bottom-nav button {
+    border: 0;
+    background: transparent;
+    color: var(--muted);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    font-size: 10px;
+    font-weight: 500;
+    border-radius: 8px;
+  }
+  .mobile-bottom-nav button.active {
+    background: var(--selected);
+    color: var(--blue);
+    font-weight: 600;
+  }
+}
