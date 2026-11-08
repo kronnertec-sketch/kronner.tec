@@ -38,7 +38,7 @@ export default function Team(){
    try{
      let result;
      if(action==='invite'){
-       const response=await fetch('/api/equipe/convite',{method:'POST',headers:{Authorization:'Bearer '+await getToken(),'Content-Type':'application/json'},body:JSON.stringify(payload)});
+       const response=await fetch('/api/equipe/convite',{method:'POST',headers:{Authorization:'Bearer '+await getToken({template:'kroner_claims'}).catch(()=>getToken()),'Content-Type':'application/json'},body:JSON.stringify(payload)});
        result=await response.json();if(!response.ok)throw new Error(result.error);setSent(result.sent);
      }else result=await api('team:'+action,payload);
      if(result.token)setLink(location.origin+'/equipe#'+result.token);

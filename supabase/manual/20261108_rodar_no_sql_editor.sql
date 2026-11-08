@@ -25,14 +25,14 @@ language plpgsql security definer set search_path='' as $$
 declare claims jsonb:=auth.jwt(); subject text:=claims->>'sub'; email text; result uuid; linked text;
 begin
  if subject is null or subject='' then return null; end if;
- if claims->>'iss'='https://funky-phoenix-3915.clerk.accounts.dev' then
+ if claims->>'iss' in ('https://splendid-shad-4330.clerk.accounts.dev','https://funky-phoenix-3915.clerk.accounts.dev') then
   if claims->>'role' is distinct from 'authenticated'
    or subject not like 'user_%'
    or claims->>'email_verified' is distinct from 'true'
    or not (
-     coalesce(claims->>'azp','') in ('https://kroner-nine.vercel.app','https://kroner-eight.vercel.app','http://localhost:3000')
-     or claims->>'azp' like 'https://kroner%.vercel.app'
-     or claims->>'azp' like 'https://%-jorgemartins2ks-projects.vercel.app'
+     coalesce(claims->>'azp','') = ''
+     or coalesce(claims->>'azp','') in ('https://kroner-nine.vercel.app','https://kroner-eight.vercel.app','http://localhost:3000')
+     or claims->>'azp' like 'https://%.vercel.app'
    ) then
    raise exception 'Sessão inválida. Confirme seu e-mail e entre novamente.';
   end if;

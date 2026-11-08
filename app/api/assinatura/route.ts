@@ -82,8 +82,8 @@ export async function POST(request: Request) {
   if (!key) return reply({error: 'A cobrança ainda aguarda configuração na Vercel.'}, 503);
 
   const api = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
+    process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://hfyvmflezsbylnxrloyu.supabase.co',
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_g7UOIX7I58BFs-Mg_U87zA_wLBCxRac',
     {
       accessToken: async () => token.slice(7),
       auth: {persistSession: false, autoRefreshToken: false},

@@ -27,7 +27,7 @@ export default function Subscription(){
  async function submit(action:string){
    setBusy(true);
    try{
-     const token=await getToken();
+     const token=await getToken({template:'kroner_claims'}).catch(()=>getToken());
      const response=await fetch('/api/assinatura',{
        method:'POST',
        headers:{
