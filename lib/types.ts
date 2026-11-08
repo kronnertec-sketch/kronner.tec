@@ -1,0 +1,3 @@
+export type Row=Record<string,any>;
+export type Workspace={professionals:Row[];shop:Row;services:Row[];clients:Row[];appointments:Row[];charges:Row[];payments:Row[];products:Row[];memberships:Row[];blocks:Row[];recurring:Row[];movements:Row[]};
+export const defaults={phone:'',city:'',state:'MG',address:'',professional:'',timezone:'America/Sao_Paulo',maxDays:21,notice:30,grid:15,cancelMinutes:120,grace:15,creditFee:0,debitFee:0,stock:false,methods:['pix','cash','credit','debit'],returnDays:15,stockDays:60,expiryDays:30,tour:0,setupStep:0,week:Array.from({length:7},(_,i)=>({enabled:i!==0,open:'08:30',close:'19:00',lunchStart:'12:00',lunchEnd:'13:00'}))};

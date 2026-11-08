@@ -1,0 +1,31 @@
+// Run with PGlite installed separately: PGLITE_MODULE=/path/to/pglite/dist/index.js node tests/auth/identity.mjs
+import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
+const {PGlite}=await import(process.env.PGLITE_MODULE||'@electric-sql/pglite');
+const db=new PGlite();
+await db.exec(`create role anon;create role authenticated;create schema auth;create schema kroner_private;
+create table auth.users(id uuid primary key,email text,email_confirmed_at timestamptz);
+create function auth.jwt() returns jsonb language sql as $$select coalesce(nullif(current_setting('request.jwt.claims',true),''),'{}')::jsonb$$;
+create table kroner_private.shops(owner uuid constraint shops_owner_fkey references auth.users);
+create table kroner_private.clients(user_id uuid constraint clients_user_id_fkey references auth.users);
+insert into auth.users values('00000000-0000-4000-8000-000000000001','owner@example.test',now()),('00000000-0000-4000-8000-000000000002','unverified@example.test',null);
+insert into kroner_private.shops values('00000000-0000-4000-8000-000000000001');`);
+const migration=await readFile(new URL('../../supabase/migrations/20261030153325_clerk_identity.sql',import.meta.url),'utf8');
+await db.exec(migration.slice(0,migration.indexOf('CREATE OR REPLACE FUNCTION kroner_private.api')));
+const base={iss:'https://funky-phoenix-3915.clerk.accounts.dev',role:'authenticated',azp:'https://kroner-piloto.vercel.app',email_verified:true};
+async function identify(claims){await db.query("select set_config('request.jwt.claims',$1,false)",[JSON.stringify(claims)]);return (await db.query('select kroner_private.current_user_id() as id')).rows[0].id;}
+assert.equal(await identify({}),null);
+assert.equal(await identify({...base,sub:'user_owner',email:'OWNER@example.test'}),'00000000-0000-4000-8000-000000000001');
+assert.equal(await identify({...base,sub:'user_owner',email:'changed@example.test'}),'00000000-0000-4000-8000-000000000001');
+await assert.rejects(identify({...base,sub:'user_attacker',email:'owner@example.test'}),/já foi vinculada/);
+const other=await identify({...base,sub:'user_new',email:'new@example.test'});
+assert.notEqual(other,'00000000-0000-4000-8000-000000000001');
+assert.equal(await identify({...base,sub:'user_new',email:'new@example.test'}),other);
+assert.notEqual(await identify({...base,sub:'user_unverified_legacy',email:'unverified@example.test'}),'00000000-0000-4000-8000-000000000002');
+await assert.rejects(identify({...base,sub:'user_bad',email:'bad@example.test',email_verified:false}),/Sessão inválida/);
+await assert.rejects(identify({...base,sub:'user_bad',email:'bad@example.test',azp:'https://evil.example'}),/Sessão inválida/);
+await assert.rejects(identify({...base,sub:'user_bad',email:'bad@example.test',iss:'https://evil.example'}),/Provedor/);
+assert.equal(await identify({iss:'https://azbccqwjnzrzrhvnlncy.supabase.co/auth/v1',role:'authenticated',sub:'00000000-0000-4000-8000-000000000001'}),'00000000-0000-4000-8000-000000000001');
+const grants=await db.query("select has_function_privilege('anon','kroner_private.current_user_id()','execute') as anon,has_function_privilege('authenticated','kroner_private.current_user_id()','execute') as authenticated");
+assert.deepEqual(grants.rows[0],{anon:false,authenticated:false});
+await db.close();console.log('PASS: identity mapping, preserved UUIDs, unverified email rejection, immutable binding, issuer/origin checks, legacy compatibility, function privileges');

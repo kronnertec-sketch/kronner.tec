@@ -1,0 +1,13 @@
+import {parsePhoneNumberFromString} from 'libphonenumber-js';
+export function phone(value:string){const digits=value.replace(/\D/g,'');if(digits.length<10)throw new Error('Informe o DDD e o número completo.');const p=parsePhoneNumberFromString(value,'BR');if(!p||p.country!=='BR'||!p.isValid())throw new Error('Informe um telefone brasileiro válido, com DDD.');return p.number;}
+export function cents(value:string|number){const n=Number(String(value).replace(',','.'));if(!Number.isFinite(n)||n<0)throw new Error('Informe um valor válido.');return Math.round(n*100);}
+export const money=(n:number)=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format((n||0)/100);
+export const today=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'America/Sao_Paulo'}).format(new Date());
+export function debtStatus(total:number,paid:number,due:string,grace:number,day=today()){if(paid>=total)return 'Pago';const elapsed=(Date.parse(day)-Date.parse(due))/86400000;return elapsed>grace?'Atrasado':'Pendente';}
+export function fee(amount:number,bps:number){return Math.round(amount*bps/10000);}
+export function safeReturn(path:string|null){return path&&/^\/(b\/|meus-horarios|painel|equipe)/.test(path)&&!path.includes('\\')?path:'/painel';}
+export const days=['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
+
+const settingRules:Record<string,[number,number]>={maxDays:[1,90],notice:[0,10080],grid:[5,60],cancelMinutes:[0,10080],grace:[0,90],returnDays:[1,3650],stockDays:[1,3650],expiryDays:[1,3650]};
+export function settingsDraft(cfg:Record<string,any>){return {...cfg,creditFee:String((cfg.creditFee||0)/100).replace('.',','),debitFee:String((cfg.debitFee||0)/100).replace('.',',')}}
+export function settingsValues(cfg:Record<string,any>){const result={...cfg};for(const [key,[min,max]] of Object.entries(settingRules)){const raw=String(cfg[key]??'').trim();const n=Number(raw);if(!/^\d+$/.test(raw)||!Number.isInteger(n)||n<min||n>max)throw new Error('Revise os prazos e intervalos: preencha os campos com números inteiros válidos.');result[key]=n;}for(const key of ['creditFee','debitFee']){const raw=String(cfg[key]??'').trim();if(!/^\d+(?:[.,]\d{1,2})?$/.test(raw)||Number(raw.replace(',','.'))>100)throw new Error('Informe a taxa entre 0 e 100%, com até duas casas decimais. Exemplo: 1,5.');result[key]=cents(raw);}return result;}
