@@ -794,6 +794,7 @@ tr:last-child td {
 .agenda-date-picker {
   position: relative;
   display: inline-flex;
+  flex-direction: row;
   align-items: center;
   gap: 10px;
   background: var(--surface);
@@ -804,17 +805,32 @@ tr:last-child td {
   color: var(--ink);
   font-weight: 500;
   font-size: 13px;
+  cursor: pointer;
+  margin: 0;
+}
+
+.agenda-date-picker:hover {
+  background: var(--selected);
+  border-color: var(--blue);
+  color: var(--blue);
+}
+
+.agenda-date-picker svg {
+  flex-shrink: 0;
+  color: var(--blue);
 }
 
 .agenda-date-picker input[type="date"] {
-  border: 0;
-  background: transparent;
-  padding: 0;
-  min-height: auto;
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  width: 100%;
   height: 100%;
-  font-weight: 500;
-  color: var(--ink);
-  width: auto;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  cursor: pointer;
 }
 
 .agenda-date-picker input[type="date"]:focus {
@@ -857,6 +873,7 @@ tr:last-child td {
 
 .agenda-chair-filter {
   display: inline-flex;
+  flex-direction: row;
   align-items: center;
   gap: 10px;
   background: var(--surface);
@@ -865,12 +882,21 @@ tr:last-child td {
   padding: 0 12px;
   min-width: 210px;
   height: 42px;
+  margin: 0;
+}
+
+.agenda-chair-filter svg {
+  flex-shrink: 0;
+  color: var(--muted);
 }
 
 .agenda-chair-filter select {
+  flex: 1;
+  width: auto;
   border: 0;
   background: transparent;
-  min-height: auto;
+  min-height: 0;
+  height: 100%;
   padding: 0;
   font-weight: 500;
   color: var(--ink);

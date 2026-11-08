@@ -232,13 +232,57 @@ export default function Dashboard(){
   data?.recurring.filter(r=>r.variable&&r.active).forEach(r=>notices.push({title:'Confira o valor deste mês',text:r.name+' · vencimento dia '+r.day,tab:'finance'}));
 
   const shopDay=formatInTimeZone(new Date(),data?.shop.cfg.timezone||'America/Sao_Paulo','yyyy-MM-dd');
-  const holidays=pendingHolidays(shopDay,cfg.holidayDecisions);
+  const holidays=pendingHolidays(
+    shopDay,
+    cfg.holidayDecisions,
+    cfg.state,
+    (data?.calendar||[]).map((ev:Row)=>({date:ev.day,name:ev.name,scope:ev.scope}))
+  );
   for(const item of holidays)notices.push({
     title:item.stage===7?'Feriado nesta semana':item.stage===14?'Feriado nas próximas duas semanas':'Feriado nos próximos 30 dias',
     text:item.name+' · '+item.date.split('-').reverse().join('/')+' · '+item.scope,
-    tab:'settings',
-    holiday:item.date
+    tab:'notices',
+    holiday:item.date,
+    holidayName:item.name
   });
+
+  async function decideHoliday(holidayDate:string,decision:'open'|'closed'){
+    const nextCfg:Row={...cfg,holidayDecisions:{...(cfg.holidayDecisions||{}),[holidayDate]:decision}};
+    C(nextCfg);
+    if(data?.shop.active){
+      const normalized=phone(nextCfg.phone||data.shop.cfg.phone||'34999990000');
+      const ok=await mutate('settings',{name,cfg:{...settingsValues(nextCfg),phone:normalized,setupStep:step},activate:true},false);
+      if(ok){
+        Toast(decision==='open'?'Confirmado: você vai trabalhar neste feriado.':'Confirmado: agenda fechada neste feriado.');
+        setTimeout(()=>Toast(''),4000);
+      }
+    }else{
+      Toast(decision==='open'?'Decisão anotada: vou trabalhar.':'Decisão anotada: não vou trabalhar.');
+      setTimeout(()=>Toast(''),4000);
+    }
+  }
+
+  async function lookupCep(rawCep:string){
+    const postal=String(rawCep||'').replace(/\D/g,'');
+    if(postal.length!==8)return;
+    try{
+      const response=await fetch('https://viacep.com.br/ws/'+postal+'/json/');
+      if(!response.ok)return;
+      const address=await response.json();
+      if(address.erro)return;
+      C(prev=>({
+        ...prev,
+        cep:postal,
+        city:address.localidade||prev.city,
+        state:(address.uf||prev.state||'').toUpperCase(),
+        ibge:address.ibge||prev.ibge,
+        address:address.logradouro||prev.address,
+        district:address.bairro||prev.district
+      }));
+      Toast('Cidade e endereço preenchidos pelo CEP.');
+      setTimeout(()=>Toast(''),3500);
+    }catch{}
+  }
 
   async function saveSettings(activate=false,nextStep=step){
     try{
@@ -364,7 +408,7 @@ export default function Dashboard(){
 
   return (
     <div className="app-shell">
-      {data.shop.active&&tour<0&&!modal&&<HolidayPrompt items={holidays} identity={data.shop.id} day={shopDay} review={()=>{T('settings');ST(5);}}/>}
+      {data.shop.active&&tour<0&&!modal&&<HolidayPrompt items={holidays} identity={data.shop.id} day={shopDay} review={()=>T('notices')}/>}
       <aside className={'sidebar '+(menu?'open':'')}>
         <Link className="brand" href="/"><img src="/kroner.svg" alt="Kroner" width="155" height="39"/></Link>
         <div className="shop-label">
@@ -416,7 +460,7 @@ export default function Dashboard(){
               <h1>{title}</h1>
               <p>{descriptions[tab]}</p>
             </div>
-            {data.shop.active&&<button className="btn primary" onClick={()=>openBooking()}><Plus size={18}/> Novo agendamento</button>}
+            {data.shop.active&&tab!=='agenda'&&<button className="btn primary" onClick={()=>openBooking()}><Plus size={18}/> Novo agendamento</button>}
           </div>
 
           {error&&!modal&&<div role="alert" className="notice danger">{error}<button onClick={()=>E('')}>×</button></div>}
@@ -928,7 +972,14 @@ export default function Dashboard(){
                 <div className={'card notification '+(n.danger?'warning':'')} key={i}>
                   <Bell size={22}/>
                   <div><h3>{n.title}</h3><p>{n.text}</p></div>
-                  <button className="btn" onClick={()=>{T(n.tab);if(n.holiday)ST(5);}}>Conferir</button>
+                  {n.holiday?(
+                    <div className="actions" style={{margin:0}}>
+                      <button type="button" className="btn primary" disabled={busy} onClick={()=>decideHoliday(n.holiday,'open')}>Vou trabalhar</button>
+                      <button type="button" className="btn" disabled={busy} onClick={()=>decideHoliday(n.holiday,'closed')}>Não vou trabalhar</button>
+                    </div>
+                  ):(
+                    <button className="btn" onClick={()=>T(n.tab)}>Conferir</button>
+                  )}
                 </div>
               ))}
               {!notices.length&&<div className="card"><Empty title="Tudo em dia por aqui." text="Quando algo precisar de atenção, você encontrará o aviso nesta área."/></div>}
@@ -956,25 +1007,15 @@ export default function Dashboard(){
                     <label>Nome da barbearia *<input value={name} onChange={e=>N(e.target.value)} required/></label>
                     <label>Profissional responsável *<input value={cfg.professional} onChange={e=>C({...cfg,professional:e.target.value})}/></label>
                     <label>Telefone de contato com DDD *<input type="tel" placeholder="(34) 99999-0000" value={cfg.phone} onChange={e=>C({...cfg,phone:e.target.value})}/></label>
+                    <label>CEP *<input inputMode="numeric" placeholder="00000-000" value={cfg.cep||''} onChange={e=>{const val=e.target.value;C({...cfg,cep:val});if(val.replace(/\D/g,'').length===8)lookupCep(val);}}/></label>
                     <label>Cidade *<input value={cfg.city} onChange={e=>C({...cfg,city:e.target.value})}/></label>
                     <label>UF *<input maxLength={2} value={cfg.state} onChange={e=>C({...cfg,state:e.target.value.toUpperCase()})}/></label>
                     <label>Fuso horário *<select value={cfg.timezone} onChange={e=>C({...cfg,timezone:e.target.value})}>{['America/Sao_Paulo','America/Manaus','America/Rio_Branco','America/Noronha'].map(x=><option key={x}>{x}</option>)}</select></label>
-                    {([['cep','CEP'],['address','Logradouro'],['number','Número'],['complement','Complemento (opcional)'],['district','Bairro'],['ibge','Código IBGE (se disponível)']] as const).map(([key,label])=>(
+                    {([['address','Logradouro'],['number','Número'],['complement','Complemento (opcional)'],['district','Bairro'],['ibge','Código IBGE (se disponível)']] as const).map(([key,label])=>(
                       <label key={key}>{label}<input value={cfg[key]||''} onChange={e=>C({...cfg,[key]:e.target.value})}/></label>
                     ))}
                     <label>País<input readOnly value="Brasil"/></label>
-                    <button className="btn" onClick={async()=>{
-                      try{
-                        const postal=String(cfg.cep||'').replace(/\D/g,'');
-                        if(postal.length!==8)throw new Error('Informe o CEP de oito dígitos.');
-                        const response=await fetch('https://viacep.com.br/ws/'+postal+'/json/');
-                        if(!response.ok)throw new Error('Consulta indisponível. Preencha o endereço manualmente.');
-                        const address=await response.json();
-                        if(address.erro)throw new Error('CEP não localizado. Confirme os campos manualmente.');
-                        if(confirm('Usar '+address.localidade+' / '+address.uf+' como localidade da agenda?'))
-                          C({...cfg,city:address.localidade,state:address.uf,ibge:address.ibge,address:address.logradouro||cfg.address,district:address.bairro||cfg.district});
-                      }catch(e){E((e as Error).message);}
-                    }}>Consultar CEP e confirmar cidade</button>
+                    <button type="button" className="btn" onClick={()=>lookupCep(cfg.cep||'')}>Consultar CEP e preencher cidade</button>
                   </div>
                 )}
 
@@ -1094,11 +1135,10 @@ export default function Dashboard(){
                         {notices.filter(n=>n.holiday).map(n=>(
                           <div className="line" key={n.holiday}>
                             <span>{n.text}</span>
-                            <button className="btn" onClick={()=>{
-                              if(!confirm('Confirmar atendimento neste feriado?'))return;
-                              C({...cfg,holidayDecisions:{...cfg.holidayDecisions,[n.holiday]:'open'}});
-                              Toast('Decisão anotada. Salve as configurações.');
-                            }}>Vou atender</button>
+                            <div className="actions" style={{margin:0}}>
+                              <button type="button" className="btn primary" disabled={busy} onClick={()=>decideHoliday(n.holiday,'open')}>Vou trabalhar</button>
+                              <button type="button" className="btn" disabled={busy} onClick={()=>decideHoliday(n.holiday,'closed')}>Não vou trabalhar</button>
+                            </div>
                           </div>
                         ))}
                       </>
