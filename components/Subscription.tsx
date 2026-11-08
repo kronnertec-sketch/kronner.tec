@@ -75,8 +75,8 @@ export default function Subscription(){
      <h2>Assinatura Kroner</h2>
      <p>Plano Principal de R$ 99,90/mês com 1 cadeira. 15 dias de teste grátis sem cartão. Cada cadeira adicional custa R$ 35,90/mês com pró-rata proporcional.</p>
      {isTestAccount ? (
-       <div className="notice" style={{background:'#eef2ff',borderColor:'#355CFF',color:'#151B2D',margin:'12px 0'}}>
-         <strong>✨ Modo de Testes Ativo</strong>
+       <div className="notice success-notice" style={{margin:'12px 0'}}>
+         <strong>Modo de Testes Ativo</strong>
          <p>Esta conta tem acesso liberado gratuito e irrestrito a todas as funcionalidades e cadeiras.</p>
        </div>
      ) : (
