@@ -7,7 +7,8 @@ export async function POST(request:Request){
  if(!body||typeof body.email!=='string')return Response.json({error:'Informe o e-mail do profissional.'},{status:400});
  const {data,error}=await db.rpc('kroner_team',{action:'invite',payload:{name:body.name,email:body.email,role:body.role}});
  if(error)return Response.json({error:error.message},{status:400});
- const url=new URL('/entrar',process.env.KRONER_PUBLIC_ORIGIN||'https://kroner-barbearias.vercel.app');
+ const origin=process.env.KRONER_PUBLIC_ORIGIN||new URL(request.url).origin;
+ const url=new URL('/entrar',origin);
  url.searchParams.set('mode','signup');
  url.searchParams.set('next','/equipe#'+data.token);
  let sent=false;
