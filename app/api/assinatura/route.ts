@@ -3,9 +3,27 @@ import {createClient} from '@supabase/supabase-js';
 
 export const dynamic = 'force-dynamic';
 
-const basePrice = process.env.STRIPE_BASE_PRICE_ID || 'price_1UZK3sK5jxEBUOJHAL7eMrkq';
-const seatPrice = process.env.STRIPE_CHAIR_PRICE_ID || 'price_1UZK42K5jxEBUOJHmONdtBbF';
 const TEST_EMAILS = ['jorgemartins2k@gmail.com'];
+
+/**
+ * Preços do Stripe: usa as variáveis de ambiente se existirem; senão busca pelos
+ * lookup_keys criados na conta (kroner_base_monthly / kroner_chair_monthly).
+ */
+async function resolvePrices(stripe: Stripe) {
+  let base = process.env.STRIPE_BASE_PRICE_ID;
+  let seat = process.env.STRIPE_CHAIR_PRICE_ID;
+  if (!base || !seat) {
+    const found = await stripe.prices.list({
+      lookup_keys: ['kroner_base_monthly', 'kroner_chair_monthly'],
+      active: true,
+      limit: 2,
+    });
+    base ||= found.data.find(p => p.lookup_key === 'kroner_base_monthly')?.id;
+    seat ||= found.data.find(p => p.lookup_key === 'kroner_chair_monthly')?.id;
+  }
+  if (!base || !seat) throw new Error('Preços do Kroner não encontrados no Stripe.');
+  return {basePrice: base, seatPrice: seat};
+}
 
 const reply = (data: unknown, status = 200) =>
   Response.json(data, {status, headers: {'Cache-Control': 'no-store'}});
@@ -35,7 +53,7 @@ export async function POST(request: Request) {
 
   const email = extractEmailFromJwt(token);
   const isTestAccount = email ? TEST_EMAILS.includes(email) : false;
-  const origin = process.env.KRONER_PUBLIC_ORIGIN || 'https://kroner-eight.vercel.app';
+  const origin = process.env.KRONER_PUBLIC_ORIGIN || new URL(request.url).origin;
 
   const body = await request.json().catch(() => null);
   if (!body || !['status', 'iniciar', 'cadeiras', 'portal'].includes(body.action)) {
@@ -81,6 +99,7 @@ export async function POST(request: Request) {
   const stripe = new Stripe(key);
 
   try {
+    const {basePrice, seatPrice} = await resolvePrices(stripe);
     const matches = await stripe.customers.search({
       query: "metadata['kroner_shop']:'" + shop + "'",
       limit: 2,
