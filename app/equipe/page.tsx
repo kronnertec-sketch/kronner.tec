@@ -2,6 +2,7 @@
 import ProfessionalSettings from '@/components/ProfessionalSettings';
 import TeamDirectory from '@/components/TeamDirectory';
 import TeamAgenda,{type Appointment} from '@/components/TeamAgenda';
+import {BrandLogo} from '@/components/BrandLogo';
 import Link from 'next/link';
 import {useAuth} from '@clerk/react';
 import {useCallback,useEffect,useState} from 'react';
@@ -46,7 +47,7 @@ export default function Team(){
      await refresh();
    }catch(e){setError((e as Error).message)}finally{setBusy(false)}
  }
- return <main className="booking"><header><Link className="brand" href="/"><img src="/kroner.svg" alt="Kroner" width="155"/></Link>{['owner','partner'].includes(access)&&<Link className="btn" href={access==='partner'?'/painel?gestao=1':'/painel'}>Painel</Link>}</header><h1>Equipe e cadeiras</h1>{error&&<p role="alert" className="notice danger">{error}</p>}
+ return <main className="booking"><header className="booking-top"><Link className="brand" href="/"><BrandLogo variant="dark" height={31}/></Link>{['owner','partner'].includes(access)&&<Link className="btn primary small" href={access==='partner'?'/painel?gestao=1':'/painel'}>Voltar ao painel</Link>}</header><section className="booking-hero"><div className="booking-hero-main"><h1>Equipe e cadeiras</h1><p className="booking-location"><span>Convites, permissões, agenda individual e horários de cada profissional.</span></p></div></section>{error&&<p role="alert" className="notice danger">{error}</p>}
  {invite&&<section className="card"><h2>Convite para a equipe</h2><p>Use a conta do e-mail que recebeu o convite.</p><button disabled={busy} className="btn primary" onClick={()=>run('accept',{token:invite})}>Aceitar convite</button></section>}
  {access==='revoked'&&<p>Seu acesso à equipe foi desativado.</p>}
  {access==='none'&&!invite&&<p>Abra o link de convite enviado pela conta principal.</p>}

@@ -6,6 +6,7 @@ import {pendingHolidays} from '@/lib/holidays';
 import Subscription from '@/components/Subscription';
 import RegisteredClients from '@/components/RegisteredClients';
 import ShareGuide from '@/components/share-guide';
+import {BrandLogo} from '@/components/BrandLogo';
 import {useEffect,useState} from 'react';
 import Link from 'next/link';
 import {
@@ -57,7 +58,7 @@ function Select({label,name,options,value}:{label:string;name:string;options:(st
 }
 
 function Empty({title,text}:{title:string;text:string}){
-  return <div className="empty"><span className="empty-icon">✦</span><h3>{title}</h3><p>{text}</p></div>;
+  return <div className="empty"><span className="empty-icon" aria-hidden="true"><Scissors size={22} strokeWidth={1.85}/></span><h3>{title}</h3><p>{text}</p></div>;
 }
 
 function shiftIsoDay(dayStr:string,deltaDays:number){
@@ -405,8 +406,8 @@ export default function Dashboard(){
     }
   }
 
-  if(loading)return <div className="loading"><div className="brand"><img src="/kroner.svg" alt="Kroner" width="155" height="39"/></div><p>Preparando sua barbearia…</p></div>;
-  if(onboarding)return <main className="login"><section className="login-card"><h1>Abrir minha barbearia</h1><p>Você será o titular e terá a primeira cadeira. Se recebeu um convite de equipe, abra o link enviado pelo responsável.</p>{error&&<p role="alert">{error}</p>}<button disabled={busy} className="btn primary" onClick={async()=>{B(true);try{await call('create_shop');await load();}catch(e){E((e as Error).message);}finally{B(false);}}}>Criar minha barbearia</button></section></main>;
+  if(loading)return <div className="loading"><div className="brand"><BrandLogo variant="dark" height={38}/></div><div className="auth-spinner" aria-hidden="true"/><p>Preparando sua barbearia…</p></div>;
+  if(onboarding)return <main className="login"><Link href="/" className="brand"><BrandLogo variant="dark" height={34}/></Link><section className="login-card"><h1>Abrir minha barbearia</h1><p>Você será o titular e terá a primeira cadeira. Se recebeu um convite de equipe, abra o link enviado pelo responsável.</p>{error&&<p role="alert" className="notice danger">{error}</p>}<button disabled={busy} className="btn primary" onClick={async()=>{B(true);try{await call('create_shop');await load();}catch(e){E((e as Error).message);}finally{B(false);}}}>Criar minha barbearia</button></section></main>;
   if(!data)return <div className="card"><h1>Não foi possível abrir o painel.</h1><p>{error}</p><button className="btn" onClick={load}>Tentar novamente</button></div>;
 
   const url=typeof window!=='undefined'?location.origin+'/b/'+data.shop.slug:'';
@@ -419,8 +420,9 @@ export default function Dashboard(){
   return (
     <div className="app-shell">
       {data.shop.active&&tour<0&&!modal&&<HolidayPrompt items={holidays} identity={data.shop.id} day={shopDay} review={()=>T('notices')}/>}
+      {menu&&<div className="sidebar-backdrop" onClick={()=>MENU(false)} aria-hidden="true"/>}
       <aside className={'sidebar '+(menu?'open':'')}>
-        <Link className="brand" href="/"><img src="/kroner.svg" alt="Kroner" width="155" height="39"/></Link>
+        <Link className="brand" href="/"><BrandLogo variant="light" height={30}/></Link>
         <div className="shop-label">
           <span className="avatar">{name.slice(0,1)}</span>
           <div><strong>{name}</strong><small>Seu espaço de gestão</small></div>
@@ -466,7 +468,6 @@ export default function Dashboard(){
         <main className="content">
           <div className="page-heading">
             <div>
-              <div className="eyebrow">{tab==='overview'?'TUDO PRONTO PARA UM BOM DIA':'SEU ESPAÇO DE GESTÃO'}</div>
               <h1>{title}</h1>
               <p>{descriptions[tab]}</p>
             </div>

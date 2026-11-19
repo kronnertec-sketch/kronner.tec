@@ -1,4 +1,5 @@
-'use client';
-import {useEffect} from 'react';
-import Link from 'next/link';
-export default function Home(){useEffect(()=>{const q=new URLSearchParams(location.search);if(q.has("code")||q.has("error")||location.hash.includes("access_token=")||location.hash.includes("error="))location.replace("/auth/retorno"+location.search+location.hash)},[]);return <main className="welcome"><div className="brand"><img src="/kroner.svg" alt="Kroner" width="155" height="39"/></div><section className="hero"><div className="eyebrow">MAIS CONTROLE. MAIS TEMPO.</div><h1>Seu talento na cadeira.<br/><em>Sua barbearia em ordem.</em></h1><p>Agenda, clientes e caixa em um só lugar. Uma rotina mais leve começa aqui.</p><div className="actions"><Link className="btn primary" href="/entrar">Acessar minha barbearia →</Link><Link className="btn" href="/meus-horarios">Meus agendamentos</Link></div><div className="feature-grid"><article><span>01</span><h3>Uma agenda que encaixa.</h3><p>Serviços, duração e horários respeitam o seu jeito de trabalhar.</p></article><article><span>02</span><h3>Cada entrada, no lugar.</h3><p>Saiba o que recebeu, o que falta receber e o que saiu do caixa.</p></article><article><span>03</span><h3>Um link. Menos mensagens.</h3><p>Seu cliente escolhe um horário disponível e você acompanha no painel.</p></article></div></section><footer>Kroner · Tempo para o seu talento.</footer></main>}
+import LandingExperience from '@/components/LandingExperience';
+
+export default function Home() {
+  return <LandingExperience />;
+}
