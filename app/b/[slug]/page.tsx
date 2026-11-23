@@ -503,7 +503,9 @@ export default function Booking({ params }: { params: Promise<{ slug: string }> 
                 </button>
                 <small>
                   Pagamento realizado diretamente na barbearia. Cancelamento até{' '}
-                  {(shop.cfg.cancelMinutes || 0) / 60} h antes.
+                  {(shop.cfg.cancelMinutes || 0) / 60} h antes. Solicitamos apenas nome e telefone
+                  para confirmar seu horário — veja nossa{' '}
+                  <Link href="/privacidade">Política de Privacidade (LGPD)</Link>.
                 </small>
               </aside>
             </div>

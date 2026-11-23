@@ -139,6 +139,12 @@ export default function Login() {
 
               <div className="auth-notes">
                 <small>
+                  Ao continuar, você concorda com os{' '}
+                  <Link href="/termos">Termos de Serviço</Link> e a{' '}
+                  <Link href="/privacidade">Política de Privacidade (LGPD)</Link>. Coletamos apenas
+                  os dados essenciais para seu acesso individual.
+                </small>
+                <small>
                   Já usava a Kroner antes? No primeiro acesso pelo Clerk, crie sua conta com o
                   mesmo e-mail e confirme o código para recuperar seus dados.
                 </small>

@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { AuthProvider } from '@/lib/auth-provider';
+import { CookieConsent } from '@/components/CookieConsent';
 
 export const metadata: Metadata = {
   title: 'Kroner · Tempo para o seu talento',
@@ -29,7 +30,10 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         />
       </head>
       <body>
-        <AuthProvider>{children}</AuthProvider>
+        <AuthProvider>
+          {children}
+          <CookieConsent />
+        </AuthProvider>
       </body>
     </html>
   );

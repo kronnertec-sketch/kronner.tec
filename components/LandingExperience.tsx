@@ -20,6 +20,7 @@ import {
   Wallet,
 } from 'lucide-react';
 import { BrandLogo } from './BrandLogo';
+import { openCookieSettings } from '@/lib/consent';
 
 type Chapter = {
   id: string;
@@ -535,7 +536,11 @@ export default function LandingExperience() {
             </div>
 
             {/* Live Interactive Kroner Command Preview */}
-            <div className="kl-hero-stage">
+            <div
+              className="kl-hero-stage"
+              role="region"
+              aria-label="Exemplo ilustrativo da interface do painel e do link de agendamento da Kroner"
+            >
               <div className="kl-stage-depth-plate" aria-hidden="true" />
               <div className="kl-app-frame">
                 <div className="kl-app-chrome">
@@ -686,8 +691,17 @@ export default function LandingExperience() {
                       ref={(el) => {
                         chapterRefs.current[idx] = el;
                       }}
+                      role="button"
+                      tabIndex={0}
+                      aria-pressed={isActive}
                       className={`kl-chapter-item ${isActive ? 'is-active' : ''} accent-${chapter.accent}`}
                       onClick={() => jumpToChapter(idx)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          jumpToChapter(idx);
+                        }
+                      }}
                     >
                       <div className="kl-chapter-meta">
                         <span className="kl-chapter-tag">{chapter.tag}</span>
@@ -938,13 +952,23 @@ export default function LandingExperience() {
         <div className="kl-wrap kl-footer-inner">
           <div className="kl-footer-brand">
             <BrandLogo variant="light" height={28} />
-            <span>Tempo para o seu talento.</span>
+            <span>Tempo para o seu talento · kronner.tec@gmail.com</span>
           </div>
-          <div className="kl-footer-links">
+          <nav className="kl-footer-links" aria-label="Links do rodapé">
             <Link href="/entrar">Acessar painel</Link>
-            <Link href="/entrar?mode=signup">Criar conta</Link>
             <Link href="/meus-horarios">Meus horários</Link>
-          </div>
+            <Link href="/privacidade">Privacidade (LGPD)</Link>
+            <Link href="/termos">Termos</Link>
+            <Link href="/reembolso">Reembolso</Link>
+            <Link href="/cookies">Cookies</Link>
+            <button
+              type="button"
+              className="kl-footer-btn"
+              onClick={openCookieSettings}
+            >
+              Preferências de cookies
+            </button>
+          </nav>
         </div>
       </footer>
     </div>

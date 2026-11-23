@@ -456,6 +456,7 @@ export default function Dashboard(){
       </aside>
 
       <div className="workspace">
+        <a className="kl-skip" href="#painel-conteudo">Ir para o conteúdo principal</a>
         <header className="topbar">
           <button className="mobile-menu" onClick={()=>MENU(!menu)} aria-label="Abrir menu"><Menu/></button>
           <span>Kroner <ChevronRight size={14}/> {title}</span>
@@ -465,7 +466,7 @@ export default function Dashboard(){
           </div>
         </header>
 
-        <main className="content">
+        <main id="painel-conteudo" className="content">
           <div className="page-heading">
             <div>
               <h1>{title}</h1>
@@ -1176,7 +1177,15 @@ export default function Dashboard(){
             </>
           )}
         </main>
-        <footer className="app-footer">Tempo para o seu talento.</footer>
+        <footer className="app-footer">
+          <span>Kroner · Tempo para o seu talento.</span>
+          <nav className="app-footer-links" aria-label="Documentos legais">
+            <Link href="/privacidade">Privacidade</Link>
+            <Link href="/termos">Termos</Link>
+            <Link href="/reembolso">Reembolso</Link>
+            <Link href="/cookies">Cookies</Link>
+          </nav>
+        </footer>
         <nav className="mobile-bottom-nav" aria-label="Navegação rápida">
             {[
               ['overview','Início',LayoutDashboard],
