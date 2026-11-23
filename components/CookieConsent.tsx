@@ -44,13 +44,21 @@ export function CookieConsent() {
     };
   }, []);
 
-  // Carrega script de medição opcional SOMENTE após consentimento explícito (LGPD)
+  // Carrega script de medição opcional SOMENTE após consentimento explícito (LGPD) e URL https:// válida
   useEffect(() => {
     if (!prefs?.analytics || !ANALYTICS_SCRIPT_URL) return;
+    let parsedUrl: URL;
+    try {
+      parsedUrl = new URL(ANALYTICS_SCRIPT_URL);
+    } catch {
+      return;
+    }
+    if (parsedUrl.protocol !== 'https:') return;
     if (document.querySelector('script[data-kroner-analytics="true"]')) return;
     const script = document.createElement('script');
-    script.src = ANALYTICS_SCRIPT_URL;
+    script.src = parsedUrl.toString();
     script.defer = true;
+    script.referrerPolicy = 'strict-origin-when-cross-origin';
     script.dataset.kronerAnalytics = 'true';
     if (ANALYTICS_DOMAIN) script.dataset.domain = ANALYTICS_DOMAIN;
     document.head.appendChild(script);

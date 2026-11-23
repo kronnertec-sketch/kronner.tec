@@ -43,7 +43,7 @@ export default function Subscription(){
        setIsTestAccount(true);
        setActive(true);
        setCount(result.extras||0);
-       setMessage('Conta de testes autorizada (jorgemartins2k@gmail.com) · Acesso liberado sem cobrança.');
+       setMessage('Conta de testes autorizada · Acesso liberado sem cobrança.');
        return;
      }
      if(action==='status'){

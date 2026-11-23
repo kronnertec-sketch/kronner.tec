@@ -53,9 +53,7 @@ const clerkAppearance = {
 };
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const key =
-    process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY ||
-    'pk_test_ZWxlY3RyaWMtaWJleC0yMzQxLmNsZXJrLmFjY291bnRzLmRldiQ';
+  const key = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY?.trim();
   if (!key)
     return (
       <main className="login">

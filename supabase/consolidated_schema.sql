@@ -790,7 +790,14 @@ begin
 exception when exclusion_violation then raise exception 'Já existe um atendimento nesse horário. Escolha outro.';
 end $function$;
 
-create or replace function public.kroner_api(action text,payload jsonb default '{}') returns jsonb language sql security invoker set search_path='' as $$select kroner_private.api(action,payload)$$;
+create or replace function public.kroner_api(action text,payload jsonb default '{}') returns jsonb language sql security definer set search_path='' as $$select kroner_private.api(action,payload)$$;
 
-grant usage on schema kroner_private to anon,authenticated;
+revoke all on function public.kroner_api(text,jsonb) from public;
 grant execute on function public.kroner_api(text,jsonb) to anon,authenticated;
+revoke usage on schema kroner_private from public,anon,authenticated;
+revoke all on function kroner_private.api(text,jsonb) from public,anon,authenticated;
+revoke all on function kroner_private.chair_slots(uuid,uuid,uuid[],date,text,boolean) from public,anon,authenticated;
+revoke all on function kroner_private.available(uuid,uuid[],date,text) from public,anon,authenticated;
+
+-- Security hardening (2026-11-23): see supabase/migrations/20261123000000_security_hardening.sql
+-- Apply supabase/migrations/20261123000000_security_hardening.sql immediately after this file on fresh installs.
