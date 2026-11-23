@@ -314,26 +314,20 @@ revoke all on function kroner_private.sale_commission() from public,anon,authent
 drop trigger if exists sale_commission on kroner_private.sales;
 create trigger sale_commission before insert on kroner_private.sales for each row execute function kroner_private.sale_commission();
 
--- Identity resolution
+-- Identity resolution (Clerk Third-Party Auth · electric-ibex-2341.clerk.accounts.dev)
 create or replace function kroner_private.current_user_id() returns uuid
 language plpgsql security definer set search_path='' as $$
 declare claims jsonb:=auth.jwt(); subject text:=claims->>'sub'; email text; result uuid; linked text;
 begin
  if subject is null or subject='' then return null; end if;
- if claims->>'iss'='https://funky-phoenix-3915.clerk.accounts.dev' then
+ if claims->>'iss'='https://electric-ibex-2341.clerk.accounts.dev' then
   if claims->>'role' is distinct from 'authenticated'
    or subject not like 'user_%'
    or claims->>'email_verified' is distinct from 'true'
    or not (
-     coalesce(claims->>'azp','') in (
-       'https://kroner-eight.vercel.app',
-       'https://kroner-barbearias.vercel.app',
-       'https://kroner-piloto.vercel.app',
-       'https://kroner-piloto-jorgenetotz1-7118.vercel.app',
-       'http://localhost:3000'
-     )
-     or claims->>'azp' like 'https://kroner%.vercel.app'
-     or claims->>'azp' like 'https://%-jorgenetotz1-7118.vercel.app'
+     coalesce(claims->>'azp','') = ''
+     or coalesce(claims->>'azp','') = 'http://localhost:3000'
+     or claims->>'azp' like 'https://%.vercel.app'
    ) then
    raise exception 'Sessão inválida. Confirme seu e-mail e entre novamente.';
   end if;
@@ -348,14 +342,6 @@ begin
    update kroner_private.app_users set clerk_subject=subject where id=result;
   else
    insert into kroner_private.app_users(clerk_subject) values(subject) returning id into result;
-  end if;
-  return result;
- end if;
- if (claims->>'iss' in ('https://qqcmtajnrcbfqgkixame.supabase.co/auth/v1', 'https://azbccqwjnzrzrhvnlncy.supabase.co/auth/v1'))
-  and claims->>'role'='authenticated' then
-  select id into result from auth.users where id=subject::uuid;
-  if result is not null then
-   insert into kroner_private.app_users(id) values(result) on conflict(id) do nothing;
   end if;
   return result;
  end if;
@@ -378,7 +364,7 @@ begin
  if professional_row.id is null then return result;end if;
  s.cfg:=s.cfg||professional_row.preferences;
  if (kroner_private.local_holiday(sid,day) or to_char(day,'MM-DD') in ('01-01','04-21','05-01','09-07','10-12','11-02','11-15','11-20','12-25')) and coalesce(case when professional_row.role='owner' then s.cfg->'holidayDecisions' else professional_row.preferences->'holidayDecisions' end->>day::text,'')<>'open' then return result;end if;
- buffer_minutes:=coalesce((professional_row.preferences->>'buffer')::integer,10);
+ buffer_minutes:=coalesce((s.cfg->>'buffer')::integer,10);
  select sum(coalesce((professional_row.preferences->'durations'->>id::text)::int,duration)),sum(services.price),count(*) into dur,price,n from kroner_private.services where shop=sid and active and id=any(svc) and not(coalesce(professional_row.preferences->'disabledServices','[]') ? id::text);
  if n=0 or n<>cardinality(svc) or dur>=1440 then return result;end if;
  z:=coalesce(s.cfg->>'timezone','America/Sao_Paulo');
@@ -392,7 +378,7 @@ begin
  step:=greatest(5,coalesce((s.cfg->>'grid')::integer,15));cursor_t:=lo;
  while day+cursor_t+make_interval(mins=>dur)<=day+hi and cursor_t<hi loop
  a:=(day+cursor_t) at time zone z;b:=a+make_interval(mins=>dur);
- if a>=now()+make_interval(mins=>case when manual then 0 else coalesce((professional_row.preferences->>'notice')::int,10) end)
+ if a>=now()+make_interval(mins=>case when manual then 0 else coalesce((s.cfg->>'notice')::int,10) end)
  and (lunch1 is null or not (cursor_t<lunch2 and day+cursor_t+make_interval(mins=>dur)>day+lunch1))
  and not exists(select 1 from kroner_private.appointments x where x.shop=sid and x.professional=chair and x.status in('booked','done') and x.starts<b+make_interval(mins=>buffer_minutes) and x.ends+make_interval(mins=>buffer_minutes)>a)
  and not exists(select 1 from kroner_private.blocks x where x.shop=sid and x.starts<b and x.ends>a)
@@ -644,7 +630,8 @@ begin
    'memberships',coalesce((select jsonb_agg(to_jsonb(x)) from kroner_private.memberships x where shop=s.id),'[]'),
    'blocks',coalesce((select jsonb_agg(to_jsonb(x)) from kroner_private.blocks x where shop=s.id),'[]'),
    'recurring',coalesce((select jsonb_agg(to_jsonb(x)) from kroner_private.recurring x where shop=s.id),'[]'),
-   'movements',coalesce((select jsonb_agg(to_jsonb(x)) from kroner_private.movements x where shop=s.id),'[]')
+   'movements',coalesce((select jsonb_agg(to_jsonb(x)) from kroner_private.movements x where shop=s.id),'[]'),
+   'calendar',coalesce((select jsonb_agg(to_jsonb(x)) from kroner_private.calendar_events x where shop=s.id),'[]')
  );
  end if;
  if action='cancel_own' then
@@ -692,6 +679,14 @@ begin
  if action='book' then
  if length(payload->>'name')<2 or payload->>'phone' !~'^\+55[1-9][0-9][0-9]{8,9}$' then raise exception 'Nome e telefone com DDD são obrigatórios.';end if;
  insert into kroner_private.clients(shop,user_id,name,phone) values(sid,uid,left(payload->>'name',100),payload->>'phone') on conflict(shop,user_id) do update set name=excluded.name,phone=excluded.phone returning id into cid;
+ elsif action='manual_book' and nullif(payload->>'client','') is null then
+ if length(coalesce(payload->>'name',''))<2 or coalesce(payload->>'phone','') !~'^\+55[1-9][0-9][0-9]{8,9}$' then raise exception 'Informe o nome e o telefone com DDD do cliente.';end if;
+ select id into cid from kroner_private.clients where shop=sid and phone=payload->>'phone' order by (user_id is not null) desc, created_at desc limit 1;
+ if cid is null then
+  insert into kroner_private.clients(shop,name,phone) values(sid,left(trim(payload->>'name'),100),payload->>'phone') returning id into cid;
+ else
+  update kroner_private.clients set name=left(trim(payload->>'name'),100) where id=cid and user_id is null;
+ end if;
  else cid:=(payload->>'client')::uuid;if not exists(select 1 from kroner_private.clients where id=cid and shop=sid) then raise exception 'Cliente inválido.';end if;end if;
  if op is null then raise exception 'Identificador da solicitação obrigatório.';end if;
  select id into aid from kroner_private.appointments where request_id=op and shop=sid and client=cid;if aid is not null then return jsonb_build_object('id',aid);end if;

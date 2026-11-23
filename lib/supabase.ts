@@ -5,7 +5,7 @@ import {createClient} from '@supabase/supabase-js';
 /** Supabase validates the Clerk JWT through its registered third-party provider. */
 export function useApi(){
  const {session}=useSession();
- const client=useMemo(()=>createClient(process.env.NEXT_PUBLIC_SUPABASE_URL||'https://hfyvmflezsbylnxrloyu.supabase.co',process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY||'sb_publishable_g7UOIX7I58BFs-Mg_U87zA_wLBCxRac',{
+ const client=useMemo(()=>createClient(process.env.NEXT_PUBLIC_SUPABASE_URL||'https://jflrgtahcntqudqoxddh.supabase.co',process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY||'sb_publishable_3bJ6vEcJS_gbdplio6zH_Q_9z1X99-f',{
   accessToken:async()=>session?(await session.getToken({template:'kroner_claims'}).catch(()=>session.getToken())):null,
   auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false}
  }),[session]);
