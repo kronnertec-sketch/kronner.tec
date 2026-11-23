@@ -28,7 +28,7 @@ export function LegalShell({
 
       <header className="legal-header">
         <div className="legal-wrap legal-header-inner">
-          <Link href="/" className="brand" aria-label="Kroner página inicial">
+          <Link href="/" className="brand" aria-label="Kronner página inicial">
             <BrandLogo variant="light" height={30} />
           </Link>
           <Link href="/" className="auth-back-link">

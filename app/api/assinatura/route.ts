@@ -21,7 +21,7 @@ async function resolvePrices(stripe: Stripe) {
     base ||= found.data.find(p => p.lookup_key === 'kroner_base_monthly')?.id;
     seat ||= found.data.find(p => p.lookup_key === 'kroner_chair_monthly')?.id;
   }
-  if (!base || !seat) throw new Error('Preços do Kroner não encontrados no Stripe.');
+  if (!base || !seat) throw new Error('Preços da Kronner não encontrados no Stripe.');
   return {basePrice: base, seatPrice: seat};
 }
 

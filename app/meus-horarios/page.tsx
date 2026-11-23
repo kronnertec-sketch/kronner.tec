@@ -74,7 +74,7 @@ export default function Appointments() {
           <h1>Meus horários</h1>
           <p className="booking-location">
             <CalendarDays size={15} />
-            <span>Uma conta. Todos os seus agendamentos na Kroner.</span>
+            <span>Uma conta. Todos os seus agendamentos na Kronner.</span>
           </p>
         </div>
       </section>

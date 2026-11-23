@@ -8,7 +8,7 @@ export default function CookiesPage() {
   return (
     <LegalShell
       title="Política de Cookies"
-      subtitle="Entenda quais cookies e armazenamentos locais a Kroner utiliza e gerencie seu consentimento a qualquer momento."
+      subtitle="Entenda quais cookies e armazenamentos locais a Kronner utiliza e gerencie seu consentimento a qualquer momento."
       updatedAt="23 de novembro de 2026"
       current="cookies"
     >
@@ -38,7 +38,7 @@ export default function CookiesPage() {
 
       <h2>3. Cookies opcionais de medição e analytics</h2>
       <p>
-        A Kroner <strong>não ativa nenhum script de medição opcional</strong> antes do seu
+        A Kronner <strong>não ativa nenhum script de medição opcional</strong> antes do seu
         consentimento explícito no aviso de cookies. Caso você aceite, podemos coletar métricas
         agregadas de navegação para melhorar a velocidade e a usabilidade das telas, sem venda de
         dados e sem anúncios de terceiros.

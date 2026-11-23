@@ -2,9 +2,9 @@ import type { Metadata } from 'next';
 import { LegalShell } from '@/components/LegalShell';
 
 export const metadata: Metadata = {
-  title: 'Política de Reembolso e Cancelamento · Kroner',
+  title: 'Política de Reembolso e Cancelamento · Kronner',
   description:
-    'Regras transparentes sobre período gratuito de 15 dias, direito de arrependimento (7 dias — CDC) e cancelamento da assinatura Kroner.',
+    'Regras transparentes sobre período gratuito de 15 dias, direito de arrependimento (7 dias — CDC) e cancelamento da assinatura Kronner.',
 };
 
 export default function ReembolsoPage() {

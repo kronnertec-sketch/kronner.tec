@@ -28,7 +28,7 @@ export default function Login() {
 
   return (
     <main className="auth-shell">
-      <aside className="auth-brand-pane" aria-label="Sobre a Kroner">
+      <aside className="auth-brand-pane" aria-label="Sobre a Kronner">
         <div className="auth-brand-top">
           <Link href="/" className="brand" aria-label="Voltar para a página inicial">
             <BrandLogo variant="light" height={32} />
@@ -48,7 +48,7 @@ export default function Login() {
           </h1>
           <p>
             {isBookingReturn
-              ? 'Sua conta Kroner vale para todas as barbearias parceiras e mantém seus agendamentos sempre à mão.'
+              ? 'Sua conta Kronner vale para todas as barbearias parceiras e mantém seus agendamentos sempre à mão.'
               : 'Agenda por cadeira, link público para clientes, feriados pelo CEP e caixa com PDV no mesmo lugar.'}
           </p>
 
@@ -85,7 +85,7 @@ export default function Login() {
 
         <div className="auth-brand-footer">
           <CheckCircle2 size={14} />
-          <span>Kroner · Tempo para o seu talento.</span>
+          <span>Kronner · Tempo para o seu talento.</span>
         </div>
       </aside>
 
@@ -145,7 +145,7 @@ export default function Login() {
                   os dados essenciais para seu acesso individual.
                 </small>
                 <small>
-                  Já usava a Kroner antes? No primeiro acesso pelo Clerk, crie sua conta com o
+                  Já usava a Kronner antes? No primeiro acesso pelo Clerk, crie sua conta com o
                   mesmo e-mail e confirme o código para recuperar seus dados.
                 </small>
                 <small>Seu acesso é individual. Não compartilhe sua senha ou código.</small>

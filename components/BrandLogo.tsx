@@ -16,8 +16,8 @@ export function BrandLogo({
   const ink = variant === 'light' ? '#F2F5F3' : '#101618';
   const accent = variant === 'light' ? '#1EC28F' : '#0D6E52';
   const brass = variant === 'light' ? '#E2AA4F' : '#B67B28';
-  const viewBox = markOnly ? '0 0 100 100' : '0 0 416 100';
-  const width = markOnly ? height : Math.round((416 / 100) * height);
+  const viewBox = markOnly ? '0 0 100 100' : '0 0 472 100';
+  const width = markOnly ? height : Math.round((472 / 100) * height);
 
   return (
     <svg
@@ -26,7 +26,7 @@ export function BrandLogo({
       width={width}
       height={height}
       role="img"
-      aria-label="Kroner"
+      aria-label="Kronner"
       className={`brand-svg ${className}`.trim()}
     >
       <g
@@ -62,12 +62,16 @@ export function BrandLogo({
             transform="translate(259.564 84) scale(0.038574 -0.038574)"
           />
           <path
-            d="M1290 563V461H453Q466 335 544.0 272.0Q622 209 762 209Q875 209 993.5 242.5Q1112 276 1237 344V68Q1110 20 983.0 -4.5Q856 -29 729 -29Q425 -29 256.5 125.5Q88 280 88 559Q88 833 253.5 990.0Q419 1147 709 1147Q973 1147 1131.5 988.0Q1290 829 1290 563ZM922 682Q922 784 862.5 846.5Q803 909 707 909Q603 909 538.0 850.5Q473 792 457 682Z"
+            d="M1298 682V0H938V111V522Q938 667 931.5 722.0Q925 777 909 803Q888 838 852.0 857.5Q816 877 770 877Q658 877 594.0 790.5Q530 704 530 551V0H172V1120H530V956Q611 1054 702.0 1100.5Q793 1147 903 1147Q1097 1147 1197.5 1028.0Q1298 909 1298 682Z"
             transform="translate(314.070 84) scale(0.038574 -0.038574)"
           />
           <path
+            d="M1290 563V461H453Q466 335 544.0 272.0Q622 209 762 209Q875 209 993.5 242.5Q1112 276 1237 344V68Q1110 20 983.0 -4.5Q856 -29 729 -29Q425 -29 256.5 125.5Q88 280 88 559Q88 833 253.5 990.0Q419 1147 709 1147Q973 1147 1131.5 988.0Q1290 829 1290 563ZM922 682Q922 784 862.5 846.5Q803 909 707 909Q603 909 538.0 850.5Q473 792 457 682Z"
+            transform="translate(368.576 84) scale(0.038574 -0.038574)"
+          />
+          <path
             d="M1004 815Q957 837 910.5 847.5Q864 858 817 858Q679 858 604.5 769.5Q530 681 530 516V0H172V1120H530V936Q599 1046 688.5 1096.5Q778 1147 903 1147Q921 1147 942.0 1145.5Q963 1144 1003 1139Z"
-            transform="translate(365.914 84) scale(0.038574 -0.038574)"
+            transform="translate(420.420 84) scale(0.038574 -0.038574)"
           />
         </g>
       )}

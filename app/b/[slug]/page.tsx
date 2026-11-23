@@ -261,7 +261,7 @@ export default function Booking({ params }: { params: Promise<{ slug: string }> 
               <h2>{user === null ? 'Verificando seu acesso…' : 'Acesse sua conta para agendar'}</h2>
               <p>
                 Depois de entrar, você escolhe os serviços, o período e o horário em {shop.name}.
-                Sua conta vale para todas as barbearias da Kroner.
+                Sua conta vale para todas as barbearias da Kronner.
               </p>
               {user !== null && (
                 <div className="actions">

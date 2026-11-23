@@ -4,7 +4,7 @@ import { AuthProvider } from '@/lib/auth-provider';
 import { CookieConsent } from '@/components/CookieConsent';
 
 export const metadata: Metadata = {
-  title: 'Kroner · Tempo para o seu talento',
+  title: 'Kronner · Tempo para o seu talento',
   description:
     'Agenda por cadeira, link público para clientes, feriados automáticos pelo CEP e caixa com PDV para barbearias.',
   icons: {

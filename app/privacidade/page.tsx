@@ -2,9 +2,9 @@ import type { Metadata } from 'next';
 import { LegalShell } from '@/components/LegalShell';
 
 export const metadata: Metadata = {
-  title: 'Política de Privacidade (LGPD) · Kroner',
+  title: 'Política de Privacidade (LGPD) · Kronner',
   description:
-    'Como a Kroner coleta, utiliza, armazena e protege dados pessoais em conformidade com a LGPD (Lei nº 13.709/2018).',
+    'Como a Kronner coleta, utiliza, armazena e protege dados pessoais em conformidade com a LGPD (Lei nº 13.709/2018).',
 };
 
 export default function PrivacidadePage() {
@@ -17,7 +17,7 @@ export default function PrivacidadePage() {
     >
       <h2>1. Princípio da minimização de dados</h2>
       <p>
-        A Kroner coleta apenas os dados estritamente necessários para prestar o serviço de
+        A Kronner coleta apenas os dados estritamente necessários para prestar o serviço de
         agendamento e gestão de barbearias. Não solicitamos CPF de clientes finais para agendar,
         não vendemos dados pessoais e não enviamos spam por WhatsApp.
       </p>
@@ -41,16 +41,16 @@ export default function PrivacidadePage() {
           endereço e identificar feriados nacionais, estaduais e municipais da localidade.
         </li>
         <li>
-          <strong>Assinatura da barbearia:</strong> processada diretamente pela Stripe. A Kroner
+          <strong>Assinatura da barbearia:</strong> processada diretamente pela Stripe. A Kronner
           não coleta nem armazena números de cartão de crédito ou códigos de segurança.
         </li>
       </ul>
 
       <h2>3. Papéis segundo a LGPD (Controlador e Operador)</h2>
       <p>
-        Em relação aos dados de cadastro da barbearia e da conta na plataforma, a Kroner atua como
+        Em relação aos dados de cadastro da barbearia e da conta na plataforma, a Kronner atua como
         Controladora. Em relação aos dados dos clientes finais agendados em cada estabelecimento, a
-        barbearia atua como Controladora e a Kroner atua como Operadora, tratando os dados sob as
+        barbearia atua como Controladora e a Kronner atua como Operadora, tratando os dados sob as
         configurações do estabelecimento.
       </p>
 

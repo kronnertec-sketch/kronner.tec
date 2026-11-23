@@ -46,7 +46,7 @@ const descriptions:Record<string,string>={
   stock:'Seus produtos, sem surpresas.',
   reports:'Os números da sua barbearia, do seu jeito.',
   notices:'O que precisa da sua atenção.',
-  settings:'A Kroner funcionando do seu jeito.'
+  settings:'A Kronner funcionando do seu jeito.'
 };
 
 function Field({label,name,type='text',value,required=true,...rest}:{label:string;name:string;type?:string;value?:any;required?:boolean;[k:string]:any}){
@@ -459,7 +459,7 @@ export default function Dashboard(){
         <a className="kl-skip" href="#painel-conteudo">Ir para o conteúdo principal</a>
         <header className="topbar">
           <button className="mobile-menu" onClick={()=>MENU(!menu)} aria-label="Abrir menu"><Menu/></button>
-          <span>Kroner <ChevronRight size={14}/> {title}</span>
+          <span>Kronner <ChevronRight size={14}/> {title}</span>
           <div>
             <button aria-label="Abrir avisos" onClick={()=>T('notices')}><Bell size={20}/>{unreadNoticesCount>0&&<i/>}</button>
             <span className="avatar">{cfg.professional?.slice(0,1)||'K'}</span>
@@ -530,7 +530,7 @@ export default function Dashboard(){
                 <section className="card">
                   <span className="eyebrow">SEU LINK DE AGENDAMENTO</span>
                   <h2>Menos mensagens.<br/>Mais horários marcados.</h2>
-                  <p>Seu cliente escolhe. A Kroner organiza.</p>
+                  <p>Seu cliente escolhe. A Kronner organiza.</p>
                   <div className="link-box">{url}</div>
                   <div className="actions">
                     <button className="btn primary" onClick={()=>copy(url)}><Copy size={16}/> Copiar link</button>
@@ -1178,7 +1178,7 @@ export default function Dashboard(){
           )}
         </main>
         <footer className="app-footer">
-          <span>Kroner · Tempo para o seu talento.</span>
+          <span>Kronner · Tempo para o seu talento.</span>
           <nav className="app-footer-links" aria-label="Documentos legais">
             <Link href="/privacidade">Privacidade</Link>
             <Link href="/termos">Termos</Link>
@@ -1221,7 +1221,7 @@ export default function Dashboard(){
         <div className="overlay">
           <section className="modal tour" role="dialog" aria-modal="true" aria-label="Apresentação do sistema">
             <div className="split">
-              <span className="eyebrow">CONHEÇA A KRONER · {tour+1} DE {tabs.length}</span>
+              <span className="eyebrow">CONHEÇA A KRONNER · {tour+1} DE {tabs.length}</span>
               <button type="button" className="close" aria-label="Fechar apresentação" onClick={()=>{TO(-1);sessionStorage.setItem('tour-seen','1');try{localStorage.setItem('kroner:tour-seen:'+data.shop.id,'1');}catch{}}}>×</button>
             </div>
             <h2>{tabs[tour][1]}</h2>

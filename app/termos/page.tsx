@@ -3,22 +3,22 @@ import Link from 'next/link';
 import { LegalShell } from '@/components/LegalShell';
 
 export const metadata: Metadata = {
-  title: 'Termos de Serviço · Kroner',
+  title: 'Termos de Serviço · Kronner',
   description:
-    'Condições gerais de uso do sistema Kroner para barbearias, profissionais e clientes finais.',
+    'Condições gerais de uso do sistema Kronner para barbearias, profissionais e clientes finais.',
 };
 
 export default function TermosPage() {
   return (
     <LegalShell
       title="Termos de Serviço"
-      subtitle="Regras claras sobre o uso da plataforma Kroner por barbearias, equipes e clientes."
+      subtitle="Regras claras sobre o uso da plataforma Kronner por barbearias, equipes e clientes."
       updatedAt="23 de novembro de 2026"
       current="termos"
     >
       <h2>1. Objeto do serviço</h2>
       <p>
-        A Kroner é uma plataforma web de agendamento online e gestão operacional voltada para
+        A Kronner é uma plataforma web de agendamento online e gestão operacional voltada para
         barbearias, incluindo agenda por cadeira, link público de reservas, controle de feriados,
         caixa/PDV, comissões, clientes mensalistas e controle opcional de estoque.
       </p>
@@ -26,7 +26,7 @@ export default function TermosPage() {
       <h2>2. Conta individual e responsabilidades</h2>
       <ul>
         <li>
-          O acesso à Kroner é individual e intransferível. O usuário é responsável por manter o
+          O acesso à Kronner é individual e intransferível. O usuário é responsável por manter o
           sigilo de sua conta e códigos de verificação.
         </li>
         <li>
@@ -38,13 +38,13 @@ export default function TermosPage() {
 
       <h2>3. Escopo gerencial e financeiro (sem promessas irreais)</h2>
       <p>
-        Os relatórios financeiros, taxas de cartão, comissões e fechamento de caixa da Kroner têm
-        caráter exclusivamente <strong>gerencial</strong>. A Kroner <strong>não</strong> calcula
+        Os relatórios financeiros, taxas de cartão, comissões e fechamento de caixa da Kronner têm
+        caráter exclusivamente <strong>gerencial</strong>. A Kronner <strong>não</strong> calcula
         impostos, não emite nota fiscal e não substitui assessoria contábil ou jurídica.
       </p>
       <p>
         Os pagamentos pelos serviços prestados pela barbearia (corte, barba, produtos) são
-        acertados diretamente entre cliente e estabelecimento. A Kroner não intermedia nem retém
+        acertados diretamente entre cliente e estabelecimento. A Kronner não intermedia nem retém
         valores pagos pelos clientes finais.
       </p>
 
@@ -52,7 +52,7 @@ export default function TermosPage() {
       <p>
         Os avisos de feriados e vencimentos são auxiliares e exibidos dentro do painel. Cabe ao
         responsável pela barbearia conferir a legislação municipal/estadual vigente e confirmar se
-        haverá expediente em cada data. A Kroner não envia mensagens automáticas pelo WhatsApp em
+        haverá expediente em cada data. A Kronner não envia mensagens automáticas pelo WhatsApp em
         nome da barbearia.
       </p>
 

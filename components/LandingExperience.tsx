@@ -45,14 +45,14 @@ const CHAPTERS: Chapter[] = [
     tag: 'Link público',
     title: 'Um link na bio. Menos mensagens para responder.',
     body: 'Seu cliente abre o endereço da sua barbearia, seleciona corte, barba ou combo, escolhe manhã, tarde ou noite e reserva apenas os horários em que o atendimento inteiro cabe.',
-    detail: 'Uma conta única do cliente funciona em todas as barbearias na Kroner',
+    detail: 'Uma conta única do cliente funciona em todas as barbearias na Kronner',
     accent: 'brass',
   },
   {
     id: 'feriados',
     tag: 'Feriados pelo CEP',
     title: 'Feriados da sua cidade resolvidos antes da semana virar.',
-    body: 'Ao informar o CEP da barbearia, a Kroner acompanha feriados nacionais, estaduais e municipais e avisa com antecedência. Em um clique você define se vai trabalhar ou fechar a agenda.',
+    body: 'Ao informar o CEP da barbearia, a Kronner acompanha feriados nacionais, estaduais e municipais e avisa com antecedência. Em um clique você define se vai trabalhar ou fechar a agenda.',
     detail: 'Você pode alterar sua decisão na aba de Avisos quando precisar',
     accent: 'emerald',
   },
@@ -74,7 +74,7 @@ const STATEMENT_WORDS: Array<{ text: string; tone?: 'emerald' | 'brass' }> = [
   { text: 'acabamento' },
   { text: 'perfeito,' },
   { text: 'a' },
-  { text: 'Kroner', tone: 'emerald' },
+  { text: 'Kronner', tone: 'emerald' },
   { text: 'organiza' },
   { text: 'cada' },
   { text: 'cadeira,' },
@@ -210,7 +210,7 @@ function StageScene({
     return (
       <div className="kl-scene-body">
         <div className="kl-scene-topbar">
-          <span className="kl-scene-url">kroner.app/b/atelier-centro</span>
+          <span className="kl-scene-url">kronner.vercel.app/b/atelier-centro</span>
           <span className="kl-scene-pill is-brass">
             <Scissors size={13} /> Link ativo
           </span>
@@ -470,7 +470,7 @@ export default function LandingExperience() {
 
       <header className={`kl-nav ${navScrolled ? 'is-scrolled' : ''}`}>
         <div className="kl-wrap kl-nav-inner">
-          <Link href="/" className="kl-brand-link" aria-label="Kroner início">
+          <Link href="/" className="kl-brand-link" aria-label="Kronner início">
             <BrandLogo variant="light" height={31} />
           </Link>
 
@@ -535,11 +535,11 @@ export default function LandingExperience() {
               </div>
             </div>
 
-            {/* Live Interactive Kroner Command Preview */}
+            {/* Live Interactive Kronner Command Preview */}
             <div
               className="kl-hero-stage"
               role="region"
-              aria-label="Exemplo ilustrativo da interface do painel e do link de agendamento da Kroner"
+              aria-label="Exemplo ilustrativo da interface do painel e do link de agendamento da Kronner"
             >
               <div className="kl-stage-depth-plate" aria-hidden="true" />
               <div className="kl-app-frame">
@@ -675,7 +675,7 @@ export default function LandingExperience() {
                 Do primeiro cliente da manhã ao fechamento do caixa.
               </h2>
               <p>
-                Role pela rotina completa e acompanhe cada peça da Kroner entrando em cena no
+                Role pela rotina completa e acompanhe cada peça da Kronner entrando em cena no
                 momento em que sua barbearia precisa dela.
               </p>
             </div>
@@ -785,7 +785,7 @@ export default function LandingExperience() {
         <section
           ref={statementRef}
           className="kl-statement-section"
-          aria-label="Manifesto Kroner"
+          aria-label="Manifesto Kronner"
         >
           <div className="kl-wrap">
             <p className="kl-statement-text">

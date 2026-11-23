@@ -25,7 +25,7 @@ export default function RegisteredClients({data, day}:{data:Workspace; day:strin
       <div className="split" style={{marginBottom:16}}>
         <div>
           <h2>Base de clientes com conta</h2>
-          <p style={{margin:'4px 0 0'}}>Clientes que entraram pelo seu link de agendamento e criaram conta na Kroner.</p>
+          <p style={{margin:'4px 0 0'}}>Clientes que entraram pelo seu link de agendamento e criaram conta na Kronner.</p>
         </div>
         <span className="badge">{rows.length} {rows.length===1?'cliente':'clientes'}</span>
       </div>
