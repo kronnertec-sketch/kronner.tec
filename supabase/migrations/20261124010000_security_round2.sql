@@ -135,7 +135,7 @@ begin
     if me.role <> 'owner' then raise exception 'Somente o titular altera comissões.'; end if;
     new_rate := (payload->>'rate')::int;
     if new_rate is null or new_rate not between 0 and 10000 then
-      raise exception 'Percentual de comissão inválido (0% a 100%).';
+      raise exception 'Percentual de comissão inválido (0%% a 100%%).';
     end if;
     update kroner_private.professionals set commission_bps = new_rate where id = (payload->>'id')::uuid and shop = s.id;
     return '{"ok":true}';
