@@ -45,8 +45,17 @@ export function CookieConsent() {
   }, []);
 
   // Carrega script de medição opcional SOMENTE após consentimento explícito (LGPD) e URL https:// válida
+  // Ao revogar consentimento, remove o script e recarrega a página para encerrar hooks em memória
   useEffect(() => {
-    if (!prefs?.analytics || !ANALYTICS_SCRIPT_URL) return;
+    const existingScript = document.querySelector('script[data-kroner-analytics="true"]');
+    if (!prefs?.analytics) {
+      if (existingScript) {
+        existingScript.remove();
+        window.location.reload();
+      }
+      return;
+    }
+    if (!ANALYTICS_SCRIPT_URL) return;
     let parsedUrl: URL;
     try {
       parsedUrl = new URL(ANALYTICS_SCRIPT_URL);
@@ -54,7 +63,7 @@ export function CookieConsent() {
       return;
     }
     if (parsedUrl.protocol !== 'https:') return;
-    if (document.querySelector('script[data-kroner-analytics="true"]')) return;
+    if (existingScript) return;
     const script = document.createElement('script');
     script.src = parsedUrl.toString();
     script.defer = true;

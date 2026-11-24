@@ -5,24 +5,55 @@ import { syncShopSubscription } from '@/lib/server-billing-sync';
 
 export const dynamic = 'force-dynamic';
 
+type CachedPrices = { basePrice: string; seatPrice: string; expiresAt: number };
+let cachedPrices: CachedPrices | null = null;
+
 /**
  * Preços do Stripe: usa as variáveis de ambiente se existirem; senão busca pelos
- * lookup_keys criados na conta (kroner_base_monthly / kroner_chair_monthly).
+ * lookup_keys criados na conta (kroner_base_monthly / kroner_chair_monthly) com cache de 5 min.
  */
 async function resolvePrices(stripe: Stripe) {
-  let base = process.env.STRIPE_BASE_PRICE_ID;
-  let seat = process.env.STRIPE_CHAIR_PRICE_ID;
-  if (!base || !seat) {
-    const found = await stripe.prices.list({
-      lookup_keys: ['kroner_base_monthly', 'kroner_chair_monthly'],
-      active: true,
-      limit: 2,
-    });
-    base ||= found.data.find(p => p.lookup_key === 'kroner_base_monthly')?.id;
-    seat ||= found.data.find(p => p.lookup_key === 'kroner_chair_monthly')?.id;
+  const envBase = process.env.STRIPE_BASE_PRICE_ID?.trim();
+  const envSeat = process.env.STRIPE_CHAIR_PRICE_ID?.trim();
+  if (envBase && envSeat) return { basePrice: envBase, seatPrice: envSeat };
+
+  if (cachedPrices && cachedPrices.expiresAt > Date.now()) {
+    return { basePrice: cachedPrices.basePrice, seatPrice: cachedPrices.seatPrice };
   }
+
+  const found = await stripe.prices.list({
+    lookup_keys: ['kroner_base_monthly', 'kroner_chair_monthly'],
+    active: true,
+    limit: 2,
+  });
+  const base = envBase || found.data.find(p => p.lookup_key === 'kroner_base_monthly')?.id;
+  const seat = envSeat || found.data.find(p => p.lookup_key === 'kroner_chair_monthly')?.id;
   if (!base || !seat) throw new Error('Preços da Kronner não encontrados no Stripe.');
+  cachedPrices = { basePrice: base, seatPrice: seat, expiresAt: Date.now() + 5 * 60 * 1000 };
   return { basePrice: base, seatPrice: seat };
+}
+
+// [MÉDIA-03] Bounded FIFO per-shop rate limiter (max 30 req/min per shop, max 1,000 keys)
+const BILLING_RATE_WINDOW_MS = 60 * 1000;
+const BILLING_RATE_MAX = 30;
+const BILLING_MAP_CAP = 1000;
+const billingRequests = new Map<string, number[]>();
+
+function isBillingRateLimited(shopId: string): boolean {
+  const now = Date.now();
+  const timestamps = (billingRequests.get(shopId) ?? []).filter(t => now - t < BILLING_RATE_WINDOW_MS);
+  if (timestamps.length >= BILLING_RATE_MAX) {
+    billingRequests.set(shopId, timestamps);
+    return true;
+  }
+  timestamps.push(now);
+  billingRequests.set(shopId, timestamps);
+  while (billingRequests.size > BILLING_MAP_CAP) {
+    const oldestKey = billingRequests.keys().next().value;
+    if (oldestKey === undefined) break;
+    billingRequests.delete(oldestKey);
+  }
+  return false;
 }
 
 const reply = (data: unknown, status = 200) =>
@@ -67,10 +98,32 @@ export async function POST(request: Request) {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 
-  const { data: shop, error } = await api.rpc('kroner_billing_owner');
-  if (error) return reply({ error: 'Não foi possível validar o titular da barbearia.' }, 503);
+  let shop: string | null = null;
+  let persistedCustomerId: string | null = null;
+  let extraChairsInShop = 0;
+
+  const ctxRes = await api.rpc('kroner_billing_context');
+  if (!ctxRes.error && ctxRes.data && typeof ctxRes.data === 'object') {
+    const ctx = ctxRes.data as { shop?: unknown; stripeCustomerId?: unknown; extraChairs?: unknown };
+    if (typeof ctx.shop === 'string') shop = ctx.shop;
+    if (typeof ctx.stripeCustomerId === 'string' && ctx.stripeCustomerId.startsWith('cus_')) {
+      persistedCustomerId = ctx.stripeCustomerId;
+    }
+    if (typeof ctx.extraChairs === 'number' && Number.isFinite(ctx.extraChairs)) {
+      extraChairsInShop = Math.max(0, Math.min(100, Math.trunc(ctx.extraChairs)));
+    }
+  } else {
+    const ownerRes = await api.rpc('kroner_billing_owner');
+    if (ownerRes.error) return reply({ error: 'Não foi possível validar o titular da barbearia.' }, 503);
+    if (typeof ownerRes.data === 'string') shop = ownerRes.data;
+  }
+
   if (typeof shop !== 'string' || !/^[a-f0-9-]{36}$/i.test(shop)) {
     return reply({ error: 'Somente a conta principal pode gerenciar a assinatura.' }, 403);
+  }
+
+  if (isBillingRateLimited(shop)) {
+    return reply({ error: 'Muitas consultas de assinatura. Aguarde um minuto.' }, 429);
   }
 
   // Opcional: bypass de testes SOMENTE após validação criptográfica do titular e via env server-side
@@ -96,14 +149,27 @@ export async function POST(request: Request) {
 
   try {
     const { basePrice, seatPrice } = await resolvePrices(stripe);
-    const matches = await stripe.customers.search({
-      query: "metadata['kroner_shop']:'" + shop + "'",
-      limit: 2,
-    });
-    if (matches.data.length > 1) {
-      return reply({ error: 'Cadastro de cobrança duplicado. Contate o suporte.' }, 409);
+
+    // [MÉDIA-03] Prefer persisted stripe_customer_id to avoid hitting Stripe's 20 req/s Search quota
+    let customer: Stripe.Customer | undefined;
+    if (persistedCustomerId) {
+      const retrieved = await stripe.customers.retrieve(persistedCustomerId).catch(() => null);
+      if (retrieved && !('deleted' in retrieved && retrieved.deleted) && retrieved.metadata?.kroner_shop === shop) {
+        customer = retrieved;
+      }
     }
-    let customer = matches.data[0];
+
+    if (!customer) {
+      const matches = await stripe.customers.search({
+        query: "metadata['kroner_shop']:'" + shop + "'",
+        limit: 2,
+      });
+      if (matches.data.length > 1) {
+        return reply({ error: 'Cadastro de cobrança duplicado. Contate o suporte.' }, 409);
+      }
+      customer = matches.data[0];
+    }
+
     if (!customer && body.action === 'iniciar') {
       customer = await stripe.customers.create(
         { metadata: { kroner_shop: shop } },
@@ -112,7 +178,7 @@ export async function POST(request: Request) {
     }
     if (!customer) {
       return body.action === 'status'
-        ? reply({ status: 'sem_assinatura', extras: 0 })
+        ? reply({ status: 'sem_assinatura', extras: extraChairsInShop })
         : reply({ error: 'Inicie a assinatura antes de acessar a cobrança.' }, 409);
     }
 
@@ -153,7 +219,7 @@ export async function POST(request: Request) {
     if (body.action === 'status') {
       return reply({
         status: subscription?.status || 'sem_assinatura',
-        extras: seat?.quantity || 0,
+        extras: subscription ? seat?.quantity || 0 : extraChairsInShop,
         trialEnd: subscription?.trial_end,
       });
     }
@@ -173,6 +239,13 @@ export async function POST(request: Request) {
       const count = body.quantity;
       if (!Number.isSafeInteger(count) || count < 0 || count > 100) {
         return reply({ error: 'Informe de 0 a 100 cadeiras adicionais.' }, 400);
+      }
+      // [MÉDIA-04] Cap cardless trial subscriptions at 4 extra chairs (5 total) until payment method/active
+      if (subscription.status === 'trialing' && !subscription.default_payment_method && count > 4) {
+        return reply(
+          { error: 'Durante o período gratuito sem cartão, o limite é de até 4 cadeiras adicionais (5 no total).' },
+          409
+        );
       }
       if ((seat?.quantity || 0) === count) return reply({ ok: true });
 
@@ -217,16 +290,36 @@ export async function POST(request: Request) {
     if (subscription) return reply({ error: 'Já existe assinatura para esta barbearia.' }, 409);
 
     const open = await stripe.checkout.sessions.list({ customer: customer.id, status: 'open', limit: 100 });
-    const previous = open.data.find(s => s.mode === 'subscription' && s.client_reference_id === shop);
+    const expectedExtraChairs = String(extraChairsInShop);
+    const previous = open.data.find(
+      s =>
+        s.mode === 'subscription' &&
+        s.client_reference_id === shop &&
+        s.metadata?.extra_chairs === expectedExtraChairs
+    );
     if (previous?.url) return reply({ url: previous.url });
+
+    // Expire any stale open subscription sessions with an outdated extra_chairs count
+    for (const stale of open.data) {
+      if (stale.mode === 'subscription' && stale.client_reference_id === shop) {
+        await stripe.checkout.sessions.expire(stale.id).catch(() => null);
+      }
+    }
+
+    // Include any extra chairs added during the 15-day trial automatically in the Stripe Checkout
+    const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = [{ price: basePrice, quantity: 1 }];
+    if (extraChairsInShop > 0) {
+      lineItems.push({ price: seatPrice, quantity: extraChairsInShop });
+    }
 
     const eligible = !history.data.some(s => s.items.data.some(i => i.price.id === basePrice));
     const session = await stripe.checkout.sessions.create(
       {
         customer: customer.id,
         client_reference_id: shop,
+        metadata: { kroner_shop: shop, extra_chairs: expectedExtraChairs },
         mode: 'subscription',
-        line_items: [{ price: basePrice, quantity: 1 }],
+        line_items: lineItems,
         allowed_payment_method_types: ['card'],
         payment_method_collection: eligible ? 'if_required' : 'always',
         subscription_data: {
@@ -238,7 +331,7 @@ export async function POST(request: Request) {
         success_url: origin + '/painel',
         cancel_url: origin + '/painel',
       },
-      { idempotencyKey: 'checkout-' + shop + '-' + Math.floor(Date.now() / 300000) }
+      { idempotencyKey: 'checkout-' + shop + '-' + extraChairsInShop + '-' + Math.floor(Date.now() / 300000) }
     );
     return reply({ url: session.url });
   } catch {

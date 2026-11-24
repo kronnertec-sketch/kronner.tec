@@ -1,4 +1,3 @@
-import { createHash } from 'node:crypto';
 import { createClient } from '@supabase/supabase-js';
 import { z } from 'zod';
 import { getSupabaseEnv, resolvePublicOrigin } from '@/lib/server-origin';
@@ -21,25 +20,25 @@ const SAFE_RPC_ERRORS = new Set([
   'Limite diário de convites atingido. Tente novamente mais tarde.',
 ]);
 
-// Burst rate limit por processo (complementa o limite persistente de 24h no Postgres)
+// [MÉDIA-02] Bounded FIFO per-shop burst rate limit (after auth, max 1,000 keys)
 const RATE_WINDOW_MS = 10 * 60 * 1000;
 const RATE_MAX_REQUESTS = 10;
+const RATE_MAP_CAP = 1000;
 const recentRequests = new Map<string, number[]>();
 
-function isRateLimited(token: string): boolean {
-  const key = createHash('sha256').update(token).digest('hex');
+function isRateLimited(shopId: string): boolean {
   const now = Date.now();
-  const timestamps = (recentRequests.get(key) ?? []).filter(t => now - t < RATE_WINDOW_MS);
+  const timestamps = (recentRequests.get(shopId) ?? []).filter(t => now - t < RATE_WINDOW_MS);
   if (timestamps.length >= RATE_MAX_REQUESTS) {
-    recentRequests.set(key, timestamps);
+    recentRequests.set(shopId, timestamps);
     return true;
   }
   timestamps.push(now);
-  recentRequests.set(key, timestamps);
-  if (recentRequests.size > 500) {
-    for (const [k, list] of recentRequests.entries()) {
-      if (list.every(t => now - t >= RATE_WINDOW_MS)) recentRequests.delete(k);
-    }
+  recentRequests.set(shopId, timestamps);
+  while (recentRequests.size > RATE_MAP_CAP) {
+    const oldestKey = recentRequests.keys().next().value;
+    if (oldestKey === undefined) break;
+    recentRequests.delete(oldestKey);
   }
   return false;
 }
@@ -63,11 +62,6 @@ export async function POST(request: Request) {
     return reply({ error: 'Serviço de dados não configurado.' }, 503);
   }
 
-  const jwt = authorization.slice(7).trim();
-  if (isRateLimited(jwt)) {
-    return reply({ error: 'Muitas tentativas de convite. Aguarde alguns minutos.' }, 429);
-  }
-
   const rawBody = await request.json().catch(() => null);
   const parsed = InviteSchema.safeParse(rawBody);
   if (!parsed.success) {
@@ -75,12 +69,26 @@ export async function POST(request: Request) {
     return reply({ error: firstMessage }, 400);
   }
 
-  const { name, email, role } = parsed.data;
+  const jwt = authorization.slice(7).trim();
   const db = createClient(supabaseEnv.url, supabaseEnv.publishableKey, {
     accessToken: async () => jwt,
     auth: { persistSession: false, autoRefreshToken: false },
   });
 
+  // [MÉDIA-02] Authenticate & identify shop owner BEFORE updating the rate-limit Map
+  const { data: shop, error: ownerError } = await db.rpc('kroner_billing_owner');
+  if (ownerError) {
+    return reply({ error: 'Não foi possível validar sua sessão.' }, 503);
+  }
+  if (typeof shop !== 'string' || !/^[a-f0-9-]{36}$/i.test(shop)) {
+    return reply({ error: 'Somente a conta principal gerencia a equipe.' }, 403);
+  }
+
+  if (isRateLimited(shop)) {
+    return reply({ error: 'Muitas tentativas de convite. Aguarde alguns minutos.' }, 429);
+  }
+
+  const { name, email, role } = parsed.data;
   const { data, error } = await db.rpc('kroner_team', {
     action: 'invite',
     payload: { name, email, role },
@@ -115,6 +123,7 @@ export async function POST(request: Request) {
           notify: true,
           ignore_existing: true,
         }),
+        signal: AbortSignal.timeout(5000),
       });
       sent = result.ok;
     } catch {

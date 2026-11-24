@@ -68,14 +68,13 @@ export default function Booking({ params }: { params: Promise<{ slug: string }> 
         const d = JSON.parse(saved);
         V(d.selected || []);
         P(d.period || '');
-        F(d.profile || { name: '', phone: '' });
       } catch {}
     }
   }, [slug]);
 
   useEffect(() => {
-    sessionStorage.setItem('booking:' + slug, JSON.stringify({ selected, period, profile }));
-  }, [slug, selected, period, profile]);
+    sessionStorage.setItem('booking:' + slug, JSON.stringify({ selected, period }));
+  }, [slug, selected, period]);
 
   useEffect(() => {
     if (!user || !shop || !selected.length || !period) {

@@ -7,11 +7,12 @@ export type SubscriptionSyncPayload = {
   status: string;
   seatLimit: number;
   currentPeriodEnd: string | null;
+  eventCreated?: number;
 };
 
 /**
  * Persists Stripe subscription entitlement into Postgres via a service_role-only RPC.
- * Fails silently with a server log only if SUPABASE_SERVICE_ROLE_KEY is not yet configured.
+ * Returns false if SUPABASE_SERVICE_ROLE_KEY is missing or the RPC fails.
  */
 export async function syncShopSubscription(payload: SubscriptionSyncPayload): Promise<boolean> {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
@@ -31,6 +32,7 @@ export async function syncShopSubscription(payload: SubscriptionSyncPayload): Pr
     p_status: payload.status,
     p_seat_limit: Math.max(1, Math.min(101, Math.trunc(payload.seatLimit))),
     p_current_period_end: payload.currentPeriodEnd,
+    p_event_created: payload.eventCreated ? Math.max(0, Math.trunc(payload.eventCreated)) : 0,
   });
 
   if (error) {

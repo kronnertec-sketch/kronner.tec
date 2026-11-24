@@ -66,6 +66,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       publishableKey={key}
       localization={ptBR}
       appearance={clerkAppearance}
+      telemetry={false}
     >
       {children}
     </ClerkProvider>

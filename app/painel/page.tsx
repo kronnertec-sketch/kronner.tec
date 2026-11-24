@@ -451,7 +451,7 @@ export default function Dashboard(){
         </nav>
         <div className="sidebar-bottom">
           <button onClick={()=>TO(0)}><HelpCircle size={17}/> Conhecer o sistema</button>
-          <button onClick={async()=>{await signOut();location.assign('/entrar');}}><LogOut size={17}/> Sair da conta</button>
+          <button onClick={async()=>{try{sessionStorage.removeItem('kroner:convite');for(const k of Object.keys(sessionStorage)){if(k.startsWith('booking:'))sessionStorage.removeItem(k);}}catch{}await signOut();location.assign('/entrar');}}><LogOut size={17}/> Sair da conta</button>
         </div>
       </aside>
 

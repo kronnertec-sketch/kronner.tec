@@ -5,14 +5,30 @@ export const dynamic = 'force-dynamic';
 
 const UUID_RE = /^[a-f0-9-]{36}$/i;
 
-async function resolveSeatPriceId(stripe: Stripe): Promise<string | null> {
-  if (process.env.STRIPE_CHAIR_PRICE_ID) return process.env.STRIPE_CHAIR_PRICE_ID;
+type CachedPrices = { basePrice: string; seatPrice: string; expiresAt: number };
+let cachedPrices: CachedPrices | null = null;
+
+async function resolvePrices(stripe: Stripe): Promise<{ basePrice: string; seatPrice: string }> {
+  const envBase = process.env.STRIPE_BASE_PRICE_ID?.trim();
+  const envSeat = process.env.STRIPE_CHAIR_PRICE_ID?.trim();
+  if (envBase && envSeat) return { basePrice: envBase, seatPrice: envSeat };
+
+  if (cachedPrices && cachedPrices.expiresAt > Date.now()) {
+    return { basePrice: cachedPrices.basePrice, seatPrice: cachedPrices.seatPrice };
+  }
+
   const found = await stripe.prices.list({
-    lookup_keys: ['kroner_chair_monthly'],
+    lookup_keys: ['kroner_base_monthly', 'kroner_chair_monthly'],
     active: true,
-    limit: 1,
+    limit: 2,
   });
-  return found.data[0]?.id ?? null;
+  const basePrice = envBase || found.data.find(p => p.lookup_key === 'kroner_base_monthly')?.id;
+  const seatPrice = envSeat || found.data.find(p => p.lookup_key === 'kroner_chair_monthly')?.id;
+  if (!basePrice || !seatPrice) {
+    throw new Error('Preços da Kronner não encontrados no Stripe.');
+  }
+  cachedPrices = { basePrice, seatPrice, expiresAt: Date.now() + 5 * 60 * 1000 };
+  return { basePrice, seatPrice };
 }
 
 async function resolveShopId(
@@ -31,14 +47,21 @@ async function resolveShopId(
   return typeof fromCustomer === 'string' && UUID_RE.test(fromCustomer) ? fromCustomer : null;
 }
 
-async function syncFromSubscription(stripe: Stripe, sub: Stripe.Subscription) {
+async function syncFromSubscription(
+  stripe: Stripe,
+  sub: Stripe.Subscription,
+  eventCreated: number
+) {
+  const { basePrice, seatPrice } = await resolvePrices(stripe);
+  // [MÉDIA-05] Only sync subscriptions that include the Kronner base plan
+  if (!sub.items.data.some(item => item.price.id === basePrice)) {
+    return;
+  }
+
   const shop = await resolveShopId(stripe, sub);
   if (!shop) return;
 
-  const seatPriceId = await resolveSeatPriceId(stripe);
-  const seatItem = seatPriceId
-    ? sub.items.data.find(item => item.price.id === seatPriceId)
-    : undefined;
+  const seatItem = sub.items.data.find(item => item.price.id === seatPrice);
   const extraSeats = seatItem?.quantity ?? 0;
 
   const periodEndUnix = sub.items.data.reduce<number | null>((acc, item) => {
@@ -54,6 +77,7 @@ async function syncFromSubscription(stripe: Stripe, sub: Stripe.Subscription) {
     status: sub.status,
     seatLimit: 1 + extraSeats,
     currentPeriodEnd: periodEndUnix ? new Date(periodEndUnix * 1000).toISOString() : null,
+    eventCreated,
   });
   if (!synced) {
     throw new Error('Falha ao persistir assinatura no banco de dados.');
@@ -96,7 +120,7 @@ export async function POST(request: Request) {
       case 'customer.subscription.created':
       case 'customer.subscription.updated':
       case 'customer.subscription.deleted': {
-        await syncFromSubscription(stripe, event.data.object as Stripe.Subscription);
+        await syncFromSubscription(stripe, event.data.object as Stripe.Subscription, event.created);
         break;
       }
       case 'checkout.session.completed': {
@@ -107,7 +131,7 @@ export async function POST(request: Request) {
               ? session.subscription
               : session.subscription.id;
           const sub = await stripe.subscriptions.retrieve(subId);
-          await syncFromSubscription(stripe, sub);
+          await syncFromSubscription(stripe, sub, event.created);
         }
         break;
       }
@@ -117,7 +141,7 @@ export async function POST(request: Request) {
         if (subRef) {
           const subId = typeof subRef === 'string' ? subRef : subRef.id;
           const sub = await stripe.subscriptions.retrieve(subId);
-          await syncFromSubscription(stripe, sub);
+          await syncFromSubscription(stripe, sub, event.created);
         }
         break;
       }

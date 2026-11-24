@@ -93,6 +93,10 @@ export default function PrivacidadePage() {
           <strong>ViaCEP / BrasilAPI:</strong> consultas pontuais de endereço por CEP e calendário
           público de feriados, sem envio de dados pessoais de clientes.
         </li>
+        <li>
+          <strong>Google Fonts:</strong> entrega otimizada de fontes tipográficas da interface
+          (com tráfego padrão de requisição HTTP, sem vínculo a perfil de cliente).
+        </li>
       </ul>
 
       <h2>6. Direitos do titular (Art. 18 da LGPD)</h2>

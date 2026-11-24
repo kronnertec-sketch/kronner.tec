@@ -61,6 +61,12 @@ export default function Appointments() {
           type="button"
           className="btn small"
           onClick={async () => {
+            try {
+              sessionStorage.removeItem('kroner:convite');
+              for (const k of Object.keys(sessionStorage)) {
+                if (k.startsWith('booking:')) sessionStorage.removeItem(k);
+              }
+            } catch {}
             await signOut();
             location.assign('/');
           }}

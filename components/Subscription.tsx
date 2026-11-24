@@ -73,7 +73,7 @@ export default function Subscription(){
  return (
    <section className="card">
      <h2>Assinatura Kronner</h2>
-     <p>Plano Principal de R$ 99,90/mês com 1 cadeira. 15 dias de teste grátis sem cartão. Cada cadeira adicional custa R$ 35,90/mês com pró-rata proporcional.</p>
+     <p>Plano Principal de R$ 99,90/mês com 1 cadeira. 15 dias de teste grátis sem cartão. Cada cadeira adicional (funcionário ou sócio) acrescenta R$ 35,90/mês — todas as cadeiras adicionadas durante o teste entram automaticamente na cobrança ao ativar a assinatura.</p>
      {isTestAccount ? (
        <div className="notice success-notice" style={{margin:'12px 0'}}>
          <strong>Modo de Testes Ativo</strong>
