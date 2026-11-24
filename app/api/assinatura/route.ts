@@ -139,6 +139,15 @@ export async function POST(request: Request) {
         seatLimit: 1 + (seat?.quantity || 0),
         currentPeriodEnd: periodEndUnix ? new Date(periodEndUnix * 1000).toISOString() : null,
       });
+    } else if (history.data[0]) {
+      await syncShopSubscription({
+        shop,
+        stripeCustomerId: customer.id,
+        stripeSubscriptionId: history.data[0].id,
+        status: history.data[0].status,
+        seatLimit: 1,
+        currentPeriodEnd: null,
+      });
     }
 
     if (body.action === 'status') {

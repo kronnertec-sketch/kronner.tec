@@ -47,7 +47,7 @@ async function syncFromSubscription(stripe: Stripe, sub: Stripe.Subscription) {
     return acc === null ? end : Math.max(acc, end);
   }, null);
 
-  await syncShopSubscription({
+  const synced = await syncShopSubscription({
     shop,
     stripeCustomerId: typeof sub.customer === 'string' ? sub.customer : sub.customer?.id ?? null,
     stripeSubscriptionId: sub.id,
@@ -55,6 +55,9 @@ async function syncFromSubscription(stripe: Stripe, sub: Stripe.Subscription) {
     seatLimit: 1 + extraSeats,
     currentPeriodEnd: periodEndUnix ? new Date(periodEndUnix * 1000).toISOString() : null,
   });
+  if (!synced) {
+    throw new Error('Falha ao persistir assinatura no banco de dados.');
+  }
 }
 
 export async function POST(request: Request) {
