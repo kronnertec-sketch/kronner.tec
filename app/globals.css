@@ -5085,48 +5085,58 @@ textarea {
 }
 
 .kr-entrance-word {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.06em;
   overflow: hidden;
-  clip-path: inset(0 100% 0 0);
-  opacity: 0;
-  transition: clip-path 680ms var(--ease-out-kr), opacity 360ms var(--ease-out-kr);
-  will-change: clip-path, opacity;
+  transition: opacity 320ms var(--ease-out-kr), transform 420ms var(--ease-out-kr);
+  will-change: opacity, transform;
 }
 
-.kr-entrance-word span {
+.kr-entrance-char {
   display: inline-block;
   font-family: var(--font-display, system-ui);
-  font-size: clamp(1.75rem, 4vw, 2.5rem);
+  font-size: clamp(1.85rem, 4.2vw, 2.75rem);
   font-weight: 700;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.1em;
   color: var(--obsidian-ink, #F2F5F3);
   line-height: 1;
+  opacity: 0;
+  transform: translate3d(0, 14px, 0) scale(0.94);
+  transition: opacity 380ms var(--ease-out-kr), transform 420ms var(--ease-out-kr);
+  will-change: opacity, transform;
 }
 
-/* Stage 2: Progressive brand write */
+/* Stage 2: Letter-by-letter progressive write */
 .kr-entrance--write .kr-entrance-mark {
   opacity: 1;
   transform: scale(1) rotate(0deg);
 }
 
-.kr-entrance--write .kr-entrance-word {
-  clip-path: inset(0 0% 0 0);
+.kr-entrance--write .kr-entrance-char {
   opacity: 1;
+  transform: translate3d(0, 0, 0) scale(1);
 }
 
-/* Stage 3: Highlight K + refined technological rotation */
+/* Stage 3: Highlight K + refined technological precision rotation */
 .kr-entrance--spin .kr-entrance-word {
-  clip-path: inset(0 0% 0 0);
-  opacity: 0.18;
+  opacity: 0.12;
+  transform: translate3d(8px, 0, 0);
+}
+
+.kr-entrance--spin .kr-entrance-char {
+  opacity: 1;
+  transform: translate3d(0, 0, 0) scale(1);
 }
 
 .kr-entrance--spin .kr-entrance-mark {
   opacity: 1;
-  transform: scale(1.12) rotate(360deg);
+  transform: scale(1.16) rotate(360deg);
 }
 
 /* Stage 4: Glide K toward header/sidebar brand anchor */
 .kr-entrance--dock .kr-entrance-stage {
-  transform: translate3d(calc(-50vw + 132px), calc(-50vh + 40px), 0) scale(0.72);
+  transform: translate3d(calc(-50vw + 132px), calc(-50vh + 40px), 0) scale(0.68);
 }
 
 .kr-entrance--dock .kr-entrance-mark {
@@ -5135,8 +5145,8 @@ textarea {
 }
 
 .kr-entrance--dock .kr-entrance-word {
-  clip-path: inset(0 100% 0 0);
   opacity: 0;
+  transform: translate3d(-10px, 0, 0);
 }
 
 /* Stage 5 & 6: Re-reveal wordmark at anchor + dissolve overlay */
@@ -5146,7 +5156,7 @@ textarea {
 }
 
 .kr-entrance--reveal .kr-entrance-stage {
-  transform: translate3d(calc(-50vw + 132px), calc(-50vh + 40px), 0) scale(0.72);
+  transform: translate3d(calc(-50vw + 132px), calc(-50vh + 40px), 0) scale(0.68);
 }
 
 .kr-entrance--reveal .kr-entrance-mark {
@@ -5155,8 +5165,20 @@ textarea {
 }
 
 .kr-entrance--reveal .kr-entrance-word {
-  clip-path: inset(0 0% 0 0);
   opacity: 1;
+  transform: translate3d(0, 0, 0);
+}
+
+.kr-entrance--reveal .kr-entrance-char {
+  opacity: 1;
+  transform: translate3d(0, 0, 0) scale(1);
+}
+
+/* Reduced-motion gentle static fade (no spin/glide) */
+.kr-entrance--reduced .kr-entrance-mark,
+.kr-entrance--reduced .kr-entrance-char {
+  opacity: 1;
+  transform: none;
 }
 
 @media (max-width: 960px) {

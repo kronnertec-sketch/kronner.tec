@@ -429,11 +429,16 @@ export default function Dashboard(){
 
   if(loading)return (
     <>
-      {isSignedIn&&<KronnerEntrance onComplete={handleEntranceDone} hasError={!!error}/>}
-      <div className="loading"><div className="brand"><BrandLogo variant="dark" height={38}/></div><div className="auth-spinner" aria-hidden="true"/><p>Preparando sua barbearia…</p></div>
+      <KronnerEntrance loading={true} onComplete={handleEntranceDone} hasError={!!error}/>
+      <div style={{minHeight:'100vh',background:'#0B0E10'}} aria-busy="true"/>
     </>
   );
-  if(onboarding)return <main className="login"><Link href="/" className="brand"><BrandLogo variant="dark" height={34}/></Link><section className="login-card"><h1>Abrir minha barbearia</h1><p>Você será o titular e terá a primeira cadeira. Se recebeu um convite de equipe, abra o link enviado pelo responsável.</p>{error&&<p role="alert" className="notice danger">{error}</p>}<button disabled={busy} className="btn primary" onClick={async()=>{B(true);try{await call('create_shop');await load();}catch(e){E((e as Error).message);}finally{B(false);}}}>Criar minha barbearia</button></section></main>;
+  if(onboarding)return (
+    <>
+      <KronnerEntrance loading={false} onComplete={handleEntranceDone} hasError={!!error}/>
+      <main className="login"><Link href="/" className="brand"><BrandLogo variant="dark" height={34}/></Link><section className="login-card"><h1>Abrir minha barbearia</h1><p>Você será o titular e terá a primeira cadeira. Se recebeu um convite de equipe, abra o link enviado pelo responsável.</p>{error&&<p role="alert" className="notice danger">{error}</p>}<button disabled={busy} className="btn primary" onClick={async()=>{B(true);try{await call('create_shop');await load();}catch(e){E((e as Error).message);}finally{B(false);}}}>Criar minha barbearia</button></section></main>
+    </>
+  );
   if(!data)return <div className="card"><h1>Não foi possível abrir o painel.</h1><p>{error}</p><button className="btn" onClick={load}>Tentar novamente</button></div>;
 
   const url=typeof window!=='undefined'?location.origin+'/b/'+data.shop.slug:'';
@@ -462,7 +467,7 @@ export default function Dashboard(){
 
   return (
     <>
-      <KronnerEntrance onComplete={handleEntranceDone} hasError={!!error}/>
+      <KronnerEntrance loading={false} onComplete={handleEntranceDone} hasError={!!error}/>
       <div className={'app-shell '+(waveReady?'kr-wave-ready':'')}>
       {data.shop.active&&tour<0&&!modal&&<HolidayPrompt items={holidays} identity={data.shop.id} day={shopDay} review={()=>T('notices')}/>}
       {menu&&<div className="sidebar-backdrop" onClick={()=>MENU(false)} aria-hidden="true"/>}
