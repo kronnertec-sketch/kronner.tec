@@ -1,81 +1,39 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { BrandLogo } from '@/components/BrandLogo';
 
 type KronnerEntranceProps = {
   /** Whether the underlying panel data is still loading */
   loading?: boolean;
-  /** Called right as the radial wave starts so the panel ripples out from the logo */
+  /** Called right as the radial wave opens so icons & cards cascade outward from the logo */
   onComplete: () => void;
   /** Dismiss immediately if a loading error occurs */
   hasError?: boolean;
 };
 
-let entranceCompletedInSession = false;
+let entrancePlayedInMemory = false;
 
-const CENTER_LETTERS = ['K', 'R', 'O', 'N', 'N', 'E', 'R'];
-const TAIL_LETTERS = ['R', 'O', 'N', 'N', 'E', 'R'];
+const LETTERS = ['K', 'R', 'O', 'N', 'N', 'E', 'R'];
 
 /**
- * Precision 6-stage Kronner entrance (~2.8s):
- * 1. Full-screen Kronner primary brand canvas (#0D6E52 Deep Botanical Emerald)
- * 2. Center progressive write: K R O N N E R
- * 3. Retract tail -> ONLY K remains centered with refined 360° precision sweep
- * 4. K glides to the EXACT measured pixel coordinates of .sidebar .brand
- * 5. Docked in the corner, K finishes writing R O N N E R beside itself
- * 6. Radial wave bursts outward from the Kronner logo revealing every nav icon & card in sequence
+ * Pure CSS @keyframes 6-stage Kronner entrance (~2.7s):
+ * - Renders immediately on frame 0 with #0D6E52 (eliminates any white flash before the green screen)
+ * - Runs on pure GPU @keyframes (immune to React StrictMode timer cancellation)
+ * - 0.0s–0.85s: Center progressive write of K R O N N E R
+ * - 0.85s–1.40s: Tail retracts so ONLY the K stays centered + 360° precision sweep
+ * - 1.40s–1.95s: K glides smoothly into the top-left floating pill logo slot
+ * - 1.95s–2.45s: Docked in the corner, finishes writing K R O N N E R
+ * - 2.45s–2.85s: Radial wave opens outward from the logo, revealing every nav icon & card
  */
 export function KronnerEntrance({ loading = false, onComplete, hasError }: KronnerEntranceProps) {
-  const [phase, setPhase] = useState<
-    'idle' | 'write-center' | 'isolate-k' | 'fly-corner' | 'write-corner' | 'wave-open' | 'reduced' | 'done'
-  >(() => (entranceCompletedInSession ? 'done' : 'idle'));
-  const [readyToWave, setReadyToWave] = useState(false);
-  const [dock, setDock] = useState({ dx: -520, dy: -320, scale: 0.62, x: 42, y: 36 });
-  const stageRef = useRef<HTMLDivElement | null>(null);
-
-  const measureDockTarget = () => {
-    if (typeof window === 'undefined') return;
-    const brandEl =
-      document.querySelector<HTMLElement>('.sidebar .brand') ||
-      document.querySelector<HTMLElement>('.topbar');
-    const vw = window.innerWidth;
-    const vh = window.innerHeight;
-    const cx = vw / 2;
-    const cy = vh / 2;
-
-    if (brandEl) {
-      const rect = brandEl.getBoundingClientRect();
-      if (rect.width > 0 && rect.height > 0 && rect.left >= 0) {
-        const targetX = rect.left + 18;
-        const targetY = rect.top + rect.height / 2;
-        setDock({
-          dx: Math.round(targetX - cx),
-          dy: Math.round(targetY - cy),
-          scale: 0.62,
-          x: Math.round(targetX),
-          y: Math.round(targetY),
-        });
-        return;
-      }
-    }
-
-    // Fallback aligned with desktop sidebar (.sidebar width 250px, padding 22px) or mobile topbar
-    const isMobile = vw <= 960;
-    const targetX = isMobile ? 64 : 44;
-    const targetY = isMobile ? 32 : 38;
-    setDock({
-      dx: Math.round(targetX - cx),
-      dy: Math.round(targetY - cy),
-      scale: 0.62,
-      x: targetX,
-      y: targetY,
-    });
-  };
+  const [exiting, setExiting] = useState(false);
+  const [done, setDone] = useState(() => entrancePlayedInMemory);
+  const [timelineDone, setTimelineDone] = useState(false);
 
   useEffect(() => {
-    if (entranceCompletedInSession) {
-      setPhase('done');
+    if (entrancePlayedInMemory) {
+      setDone(true);
       onComplete();
       return;
     }
@@ -84,157 +42,74 @@ export function KronnerEntrance({ loading = false, onComplete, hasError }: Kronn
       typeof window !== 'undefined' &&
       window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-    if (reduced) {
-      const r1 = window.setTimeout(() => setPhase('reduced'), 30);
-      const r2 = window.setTimeout(() => setReadyToWave(true), 550);
-      return () => {
-        window.clearTimeout(r1);
-        window.clearTimeout(r2);
-      };
-    }
-
-    measureDockTarget();
-
-    let raf1 = 0;
-    let raf2 = 0;
-    let tIsolate = 0;
-    let tFly = 0;
-    let tWriteCorner = 0;
-    let tWave = 0;
-
-    raf1 = window.requestAnimationFrame(() => {
-      raf2 = window.requestAnimationFrame(() => {
-        setPhase('write-center');
-        tIsolate = window.setTimeout(() => {
-          measureDockTarget();
-          setPhase('isolate-k');
-        }, 900);
-        tFly = window.setTimeout(() => {
-          measureDockTarget();
-          setPhase('fly-corner');
-        }, 1480);
-        tWriteCorner = window.setTimeout(() => {
-          setPhase('write-corner');
-        }, 1980);
-        tWave = window.setTimeout(() => {
-          setReadyToWave(true);
-        }, 2520);
-      });
-    });
-
-    return () => {
-      window.cancelAnimationFrame(raf1);
-      window.cancelAnimationFrame(raf2);
-      window.clearTimeout(tIsolate);
-      window.clearTimeout(tFly);
-      window.clearTimeout(tWriteCorner);
-      window.clearTimeout(tWave);
-    };
+    const ms = reduced ? 480 : 2450;
+    const timer = window.setTimeout(() => setTimelineDone(true), ms);
+    return () => window.clearTimeout(timer);
   }, [onComplete]);
 
-  // Trigger the radial wave reveal once both timeline and data load are ready
   useEffect(() => {
-    if (!readyToWave || loading || phase === 'done' || phase === 'wave-open') return;
-    setPhase('wave-open');
-    onComplete();
-    const finishTimer = window.setTimeout(() => {
-      entranceCompletedInSession = true;
-      setPhase('done');
-    }, 520);
-    return () => window.clearTimeout(finishTimer);
-  }, [readyToWave, loading, phase, onComplete]);
-
-  useEffect(() => {
-    if (hasError && phase !== 'done') {
-      entranceCompletedInSession = true;
-      setPhase('done');
+    if (done || exiting) return;
+    if ((timelineDone && !loading) || hasError) {
+      setExiting(true);
       onComplete();
+      const finish = window.setTimeout(() => {
+        entrancePlayedInMemory = true;
+        setDone(true);
+      }, 480);
+      return () => window.clearTimeout(finish);
     }
-  }, [hasError, phase, onComplete]);
+  }, [timelineDone, loading, hasError, done, exiting, onComplete]);
 
   useEffect(() => {
-    if (phase === 'done') return;
+    if (done) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        entranceCompletedInSession = true;
-        setPhase('done');
+        entrancePlayedInMemory = true;
+        setDone(true);
         onComplete();
       }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [phase, onComplete]);
+  }, [done, onComplete]);
 
-  if (phase === 'done') return null;
-
-  const isDocked = phase === 'fly-corner' || phase === 'write-corner' || phase === 'wave-open';
+  if (done) return null;
 
   return (
     <div
-      className={`kr-entrance kr-entrance--${phase}`}
+      className={`kr-intro ${exiting ? 'kr-intro--exit' : ''}`}
       role="presentation"
       aria-hidden="true"
-      style={
-        {
-          '--dock-dx': `${dock.dx}px`,
-          '--dock-dy': `${dock.dy}px`,
-          '--dock-scale': String(dock.scale),
-          '--logo-x': `${dock.x}px`,
-          '--logo-y': `${dock.y}px`,
-        } as React.CSSProperties
-      }
       onClick={() => {
         if (!loading) {
-          entranceCompletedInSession = true;
-          setPhase('done');
+          entrancePlayedInMemory = true;
+          setDone(true);
           onComplete();
         }
       }}
     >
-      <div className="kr-entrance-wave-ring" />
-      <div
-        ref={stageRef}
-        className={`kr-entrance-stage ${isDocked ? 'is-docked' : ''}`}
-      >
-        <div className="kr-entrance-mark">
-          <BrandLogo variant="light" height={52} markOnly />
+      <div className="kr-intro-ring" />
+      <div className="kr-intro-actor">
+        <div className="kr-intro-mark">
+          <BrandLogo variant="light" height={46} markOnly />
         </div>
-
-        {/* Center progressive write: K R O N N E R (retracts so ONLY K remains) */}
-        <div className="kr-entrance-center-word" aria-hidden="true">
-          {CENTER_LETTERS.map((ch, idx) => (
+        <div className="kr-intro-word-center">
+          {LETTERS.map((ch, idx) => (
             <span
               key={idx}
-              className="kr-entrance-char"
-              style={{
-                transitionDelay:
-                  phase === 'write-center'
-                    ? `${idx * 75}ms`
-                    : phase === 'isolate-k'
-                      ? `${(CENTER_LETTERS.length - 1 - idx) * 28}ms`
-                      : '0ms',
-              }}
+              className="kr-intro-c"
+              style={{ animationDelay: `${120 + idx * 65}ms` }}
             >
               {ch}
             </span>
           ))}
         </div>
-
-        {/* Corner progressive write: K (mark) + R O N N E R once docked in the sidebar corner */}
-        <div className="kr-entrance-corner-word" aria-hidden="true">
-          <span
-            className="kr-entrance-corner-char"
-            style={{ transitionDelay: phase === 'write-corner' ? '0ms' : '0ms' }}
-          >
-            K
-          </span>
-          {TAIL_LETTERS.map((ch, idx) => (
+        <div className="kr-intro-word-corner">
+          {LETTERS.map((ch, idx) => (
             <span
               key={idx}
-              className="kr-entrance-corner-char"
-              style={{
-                transitionDelay: phase === 'write-corner' ? `${(idx + 1) * 58}ms` : '0ms',
-              }}
+              className="kr-intro-d"
+              style={{ animationDelay: `${1920 + idx * 55}ms` }}
             >
               {ch}
             </span>

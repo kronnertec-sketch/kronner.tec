@@ -465,117 +465,322 @@ export default function Dashboard(){
   const shareUrl=role==='employee'&&identity.id?`${url}?p=${identity.id}`:url;
   const canEditSelectedApt=selectedApt&&(isManager||selectedApt.professional===identity.id);
 
+  const navigateTab=(id:string)=>{
+    if(!data.shop.active&&id!=='settings'){
+      Toast('Conclua e ative as configurações da barbearia para liberar esta área.');
+      setTimeout(()=>Toast(''),4000);
+      MENU(false);
+      return;
+    }
+    T(id);
+    MENU(false);
+  };
+
+  const handleSignOut=async()=>{
+    try{
+      sessionStorage.removeItem('kroner:convite');
+      for(const k of Object.keys(sessionStorage)){
+        if(k.startsWith('booking:'))sessionStorage.removeItem(k);
+      }
+    }catch{}
+    await signOut();
+    location.assign('/entrar');
+  };
+
+  const topPillTabs=visibleTabs.filter(([id])=>['overview','agenda','clients','finance','reports'].includes(id));
+  const railGroup1=visibleTabs.filter(([id])=>['overview','agenda','clients','monthly'].includes(id));
+  const railGroup2=visibleTabs.filter(([id])=>['team','finance','reports','share','notices'].includes(id));
+  const railGroup3=visibleTabs.filter(([id])=>['settings'].includes(id));
+
+  // Real 6-day activity bars from dashAppointments (zero mock data)
+  const sixDays=Array.from({length:6},(_,idx)=>{
+    const dStr=shiftIsoDay(today(),-(5-idx));
+    const count=dashAppointments.filter(a=>localDay(a.starts)===dStr&&a.status!=='cancelled').length;
+    const label=new Intl.DateTimeFormat('pt-BR',{timeZone:'UTC',weekday:'short'}).format(new Date(dStr+'T12:00:00Z')).replace('.','').slice(0,3);
+    return {day:dStr,label,count};
+  });
+  const maxBar=Math.max(1,...sixDays.map(x=>x.count));
+  const firstName=(identity.name||cfg.professional||name||'Kronner').trim().split(' ')[0];
+
   return (
     <>
       <KronnerEntrance loading={false} onComplete={handleEntranceDone} hasError={!!error}/>
-      <div className={'app-shell '+(waveReady?'kr-wave-ready':'')}>
+      <div className={'kr-shell '+(waveReady?'kr-wave-ready':'')}>
+      <a className="kl-skip" href="#painel-conteudo">Ir para o conteúdo principal</a>
       {data.shop.active&&tour<0&&!modal&&<HolidayPrompt items={holidays} identity={data.shop.id} day={shopDay} review={()=>T('notices')}/>}
       {menu&&<div className="sidebar-backdrop" onClick={()=>MENU(false)} aria-hidden="true"/>}
-      <aside className={'sidebar '+(menu?'open':'')}>
-        <Link className="brand" href="/"><BrandLogo variant="light" height={30}/></Link>
-        <div className="shop-label">
-          <span className="avatar">{name.slice(0,1)}</span>
-          <div><strong>{name}</strong><small>{ROLE_LABELS[role]}</small></div>
+
+      {/* Mobile Slide-Over Drawer */}
+      <aside className={'kr-mobile-drawer '+(menu?'open':'')} aria-label="Menu mobile">
+        <div className="split">
+          <Link className="kr-topnav-brand" href="/"><BrandLogo variant="dark" height={28}/></Link>
+          <button type="button" className="kr-icon-circle" aria-label="Fechar menu" onClick={()=>MENU(false)}><X size={18}/></button>
         </div>
-        <span className="nav-label">SUA BARBEARIA</span>
+        <div className="kr-mini-metric" style={{padding:'10px 12px'}}>
+          <div>
+            <strong>{name}</strong>
+            <span>{ROLE_LABELS[role]}</span>
+          </div>
+        </div>
         <nav>
           {visibleTabs.map(([id,label,Icon])=>(
-            <button
-              key={id}
-              className={tab===id?'active':''}
-              onClick={()=>{
-                if(!data.shop.active&&id!=='settings'){
-                  Toast('Conclua e ative as configurações da barbearia para liberar esta área.');
-                  setTimeout(()=>Toast(''),4000);
-                  MENU(false);
-                  return;
-                }
-                T(id);
-                MENU(false);
-              }}
-            >
-              <Icon size={19}/>{label}
-              {id==='notices'&&unreadNoticesCount>0&&<span className="count">{unreadNoticesCount}</span>}
+            <button key={id} type="button" className={tab===id?'active':''} onClick={()=>navigateTab(id)}>
+              <Icon size={18}/>{label}
+              {id==='notices'&&unreadNoticesCount>0&&<span className="kr-badge danger" style={{marginLeft:'auto'}}>{unreadNoticesCount}</span>}
             </button>
           ))}
         </nav>
-        <div className="sidebar-bottom">
-          <button onClick={()=>TO(0)}><HelpCircle size={17}/> Conhecer o sistema</button>
-          <button onClick={async()=>{try{sessionStorage.removeItem('kroner:convite');for(const k of Object.keys(sessionStorage)){if(k.startsWith('booking:'))sessionStorage.removeItem(k);}}catch{}await signOut();location.assign('/entrar');}}><LogOut size={17}/> Sair da conta</button>
+        <div className="kr-actions-row">
+          <button type="button" className="btn small" onClick={()=>{MENU(false);TO(0);}}><HelpCircle size={15}/> Ajuda</button>
+          <button type="button" className="btn small" onClick={handleSignOut}><LogOut size={15}/> Sair</button>
         </div>
       </aside>
 
-      <div className="workspace">
-        <a className="kl-skip" href="#painel-conteudo">Ir para o conteúdo principal</a>
-        <header className="topbar">
-          <button className="mobile-menu" onClick={()=>MENU(!menu)} aria-label="Abrir menu"><Menu/></button>
-          <span>Kronner <ChevronRight size={14}/> {title}</span>
-          <div>
-            <button aria-label="Abrir avisos" onClick={()=>T('notices')}><Bell size={20}/>{unreadNoticesCount>0&&<i/>}</button>
-            <span className="avatar">{cfg.professional?.slice(0,1)||'K'}</span>
-          </div>
-        </header>
+      {/* Floating Top Pill Navigation Bar */}
+      <header className="kr-topnav">
+        <div className="kr-topnav-left">
+          <button type="button" className="kr-mobile-trigger" onClick={()=>MENU(!menu)} aria-label="Abrir menu">
+            <Menu size={19}/>
+          </button>
+          <Link className="kr-topnav-brand" href="/"><BrandLogo variant="dark" height={28}/></Link>
+        </div>
 
-        <main id="painel-conteudo" className="content">
-          <div className="page-heading">
-            <div>
-              <h1>{title}</h1>
-              <p>{descriptions[tab]}</p>
-            </div>
-            {data.shop.active&&tab!=='agenda'&&<button className="btn primary" onClick={()=>openBooking()}><Plus size={18}/> Novo agendamento</button>}
+        <nav className="kr-topnav-pills" aria-label="Navegação principal">
+          {topPillTabs.map(([id,label])=>(
+            <button
+              key={id}
+              type="button"
+              className={'kr-topnav-pill '+(tab===id?'active':'')}
+              onClick={()=>navigateTab(id)}
+            >
+              {label}
+            </button>
+          ))}
+        </nav>
+
+        <div className="kr-topnav-right">
+          <button type="button" className="kr-icon-circle" aria-label="Avisos" onClick={()=>navigateTab('notices')}>
+            <Bell size={18}/>
+            {unreadNoticesCount>0&&<span className="kr-icon-dot"/>}
+          </button>
+          <button type="button" className="kr-icon-circle" aria-label="Conhecer o sistema" onClick={()=>TO(0)}>
+            <HelpCircle size={18}/>
+          </button>
+          <div className="kr-user-chip">
+            <span className="kr-user-avatar">{firstName.slice(0,1).toUpperCase()}</span>
+            <span className="kr-user-meta">
+              <strong>{name}</strong>
+              <small>{ROLE_LABELS[role]}</small>
+            </span>
           </div>
+        </div>
+      </header>
+
+      <div className="kr-body-grid">
+        {/* 3-Group Floating Left Icon Rail */}
+        <aside className="kr-rail" aria-label="Atalhos laterais">
+          <div className="kr-rail-group">
+            {railGroup1.map(([id,label,Icon])=>(
+              <button
+                key={id}
+                type="button"
+                aria-label={label}
+                data-tip={label}
+                className={'kr-rail-btn '+(tab===id?'active':'')}
+                onClick={()=>navigateTab(id)}
+              >
+                <Icon size={19}/>
+              </button>
+            ))}
+          </div>
+          {railGroup2.length>0&&(
+            <div className="kr-rail-group">
+              {railGroup2.map(([id,label,Icon])=>(
+                <button
+                  key={id}
+                  type="button"
+                  aria-label={label}
+                  data-tip={label}
+                  className={'kr-rail-btn '+(tab===id?'active':'')}
+                  onClick={()=>navigateTab(id)}
+                >
+                  <Icon size={19}/>
+                  {id==='notices'&&unreadNoticesCount>0&&<span className="kr-rail-badge">{unreadNoticesCount}</span>}
+                </button>
+              ))}
+            </div>
+          )}
+          <div className="kr-rail-group">
+            {railGroup3.map(([id,label,Icon])=>(
+              <button
+                key={id}
+                type="button"
+                aria-label={label}
+                data-tip={label}
+                className={'kr-rail-btn '+(tab===id?'active':'')}
+                onClick={()=>navigateTab(id)}
+              >
+                <Icon size={19}/>
+              </button>
+            ))}
+            <button type="button" aria-label="Sair da conta" data-tip="Sair da conta" className="kr-rail-btn" onClick={handleSignOut}>
+              <LogOut size={18}/>
+            </button>
+          </div>
+        </aside>
+
+        <main id="painel-conteudo" className="kr-main">
+          {tab!=='overview'&&(
+            <div className="kr-greeting-row">
+              <div>
+                <h1>{title}</h1>
+                <p className="kr-sub">{descriptions[tab]}</p>
+              </div>
+              {data.shop.active&&tab!=='agenda'&&(
+                <button type="button" className="kr-pill-cta primary" onClick={()=>openBooking()}>
+                  <Plus size={17}/> Novo agendamento
+                </button>
+              )}
+            </div>
+          )}
 
           {error&&!modal&&<div role="alert" className="notice danger">{error}<button onClick={()=>E('')}>×</button></div>}
           {toast&&<div role="status" className="toast"><Check size={17}/>{toast}</div>}
 
           {tab==='overview'&&(
             <>
-              {isTeam&&isManager&&(
-                <div className="kr-filter-bar" style={{marginBottom:14}}>
-                  <div className="kr-view-tabs" role="group" aria-label="Escopo da dashboard">
-                    <button type="button" className={'kr-pill-tab '+(dashScope==='all'?'active':'')} onClick={()=>setDashScope('all')}>Visão geral da barbearia</button>
-                    <button type="button" className={'kr-pill-tab '+(dashScope===identity.id?'active':'')} onClick={()=>setDashScope(identity.id)}>Minha dashboard</button>
-                  </div>
-                  <label className="kr-inline-select">
-                    <span>Profissional</span>
-                    <select value={dashScope} onChange={e=>setDashScope(e.target.value)}>
-                      <option value="all">Toda a barbearia</option>
-                      {data.professionals.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}
-                    </select>
-                  </label>
+              <div className="kr-greeting-row">
+                <h1>Bem-vindo de volta, <span>{firstName}</span></h1>
+                <div className="kr-greeting-actions">
+                  {isTeam&&isManager&&(
+                    <label className="kr-inline-select">
+                      <select aria-label="Escopo da dashboard" value={dashScope} onChange={e=>setDashScope(e.target.value)}>
+                        <option value="all">Visão geral da barbearia</option>
+                        <option value={identity.id}>Minha dashboard</option>
+                        {data.professionals.filter(p=>p.id!==identity.id).map(p=><option key={p.id} value={p.id}>{p.name}</option>)}
+                      </select>
+                    </label>
+                  )}
+                  {data.shop.active&&(
+                    <button type="button" className="kr-pill-cta primary" onClick={()=>openBooking()}>
+                      <Plus size={17}/> Novo agendamento
+                    </button>
+                  )}
                 </div>
-              )}
-              <div className="stats">
-                <article className="stat">
-                  <span>Hoje na agenda <CalendarDays size={17}/></span>
-                  <strong>{dashAppointments.filter(a=>localDay(a.starts)===today()&&a.status==='booked').length}</strong>
-                  <small>atendimentos agendados</small>
-                </article>
-                {canSeeFinance&&(
-                  <article className="stat">
-                    <span>Recebido hoje <Wallet size={17}/></span>
-                    <strong>{money(total('in',data.payments.filter(p=>p.settles_on===today()),true))}</strong>
-                    <small>líquido, sem aportes</small>
-                  </article>
-                )}
-                {canSeeFinance&&(
-                  <article className="stat">
-                    <span>A receber <ArrowUpRight size={17}/></span>
-                    <strong>{money(pending.reduce((n,c)=>n+c.amount-paid(c.id),0))}</strong>
-                    <small>{pending.length} lançamentos em aberto</small>
-                  </article>
-                )}
-                <article className="stat blue">
-                  <span>Serviços concluídos <Scissors size={17}/></span>
-                  <strong>{dashAppointments.filter(a=>a.status==='done').length}</strong>
-                  <small>{effectiveDashScope==='all'?'na barbearia':'no perfil selecionado'}</small>
-                </article>
               </div>
-              <div className="dashboard-grid">
-                <section className="card">
-                  <div className="split">
-                    <h2>Próximos horários</h2>
-                    <button className="text-btn" onClick={()=>T('agenda')}>Ver agenda →</button>
+
+              <div className="kr-bento">
+                {/* Focal Emerald Metric Card */}
+                <section className="kr-bento-card">
+                  <div className="kr-bento-head">
+                    <div>
+                      <h2>{canSeeFinance?'Resumo financeiro':'Resumo da agenda'}</h2>
+                      <small>{effectiveDashScope==='all'?'Toda a barbearia':'Perfil selecionado'}</small>
+                    </div>
+                    <button type="button" className="kr-corner-btn" aria-label="Abrir detalhes" onClick={()=>T(canSeeFinance?'finance':'agenda')}>
+                      <ArrowUpRight size={16}/>
+                    </button>
+                  </div>
+                  <div className="kr-emerald-card">
+                    <div className="kr-emerald-top">
+                      <span>{canSeeFinance?'Recebido hoje (líquido)':'Agendamentos hoje'}</span>
+                      {canSeeFinance?<Wallet size={17}/>:<CalendarDays size={17}/>}
+                    </div>
+                    <div className="kr-emerald-val">
+                      {canSeeFinance
+                        ? money(total('in',data.payments.filter(p=>p.settles_on===today()),true))
+                        : dashAppointments.filter(a=>localDay(a.starts)===today()&&a.status==='booked').length}
+                    </div>
+                    <div className="kr-emerald-foot">
+                      <span>{name}</span>
+                      <span>{dashAppointments.filter(a=>a.status==='done').length} concluídos</span>
+                    </div>
+                  </div>
+                  <div className="kr-mini-metric">
+                    <div>
+                      <span>{canSeeFinance?'A receber em aberto':'Hoje na agenda'}</span>
+                      <strong>
+                        {canSeeFinance
+                          ? money(pending.reduce((n,c)=>n+c.amount-paid(c.id),0))
+                          : dashAppointments.filter(a=>localDay(a.starts)===today()&&a.status==='booked').length}
+                      </strong>
+                    </div>
+                    <span className="kr-tag emerald">
+                      {canSeeFinance?`${pending.length} aberto(s)`:'Ativo'}
+                    </span>
+                  </div>
+                </section>
+
+                {/* Real 6-Day Hatched Emerald Activity Bar Chart */}
+                <section className="kr-bento-card">
+                  <div className="kr-bento-head">
+                    <div>
+                      <h2>Movimento da semana</h2>
+                      <small>Atendimentos confirmados nos últimos 6 dias</small>
+                    </div>
+                    <button type="button" className="kr-corner-btn" aria-label="Ver relatórios" onClick={()=>T(isManager||identity.commission_enabled?'reports':'agenda')}>
+                      <ArrowUpRight size={16}/>
+                    </button>
+                  </div>
+                  <div className="kr-bars" aria-label="Gráfico de atendimentos dos últimos 6 dias">
+                    {sixDays.map(item=>{
+                      const pct=Math.max(14,Math.round((item.count/maxBar)*100));
+                      const isPeak=item.count>0&&item.count===maxBar;
+                      return (
+                        <div className="kr-bar-col" key={item.day}>
+                          <div className="kr-bar-wrap">
+                            {isPeak&&<span className="kr-bar-pill">{item.count}</span>}
+                            <div
+                              className={'kr-bar-fill '+(isPeak?'peak':'')}
+                              style={{height:`${pct}%`}}
+                              title={`${item.label}: ${item.count} atendimento(s)`}
+                            />
+                          </div>
+                          <span className="kr-bar-label">{item.label}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </section>
+
+                {/* Quick Share / Productivity Bento Card */}
+                <section className="kr-bento-card">
+                  <div className="kr-bento-head">
+                    <div>
+                      <h2>{isManager||identity.can_share_link?'Link de agendamento':'Sua produtividade'}</h2>
+                      <small>{isManager||identity.can_share_link?'Compartilhe com seus clientes':'Resumo da sua cadeira'}</small>
+                    </div>
+                    <button type="button" className="kr-corner-btn" aria-label="Abrir" onClick={()=>T(isManager||identity.can_share_link?'share':'agenda')}>
+                      <ArrowUpRight size={16}/>
+                    </button>
+                  </div>
+                  <div className="kr-mini-metric">
+                    <div>
+                      <span>Hoje na agenda</span>
+                      <strong>{dashAppointments.filter(a=>localDay(a.starts)===today()&&a.status==='booked').length}</strong>
+                    </div>
+                    <span className="kr-tag neutral">{data.clients.length} clientes</span>
+                  </div>
+                  {(isManager||identity.can_share_link)&&(
+                    <>
+                      <div className="link-box" style={{margin:0,fontSize:'0.78rem'}}>{shareUrl}</div>
+                      <div className="kr-actions-row">
+                        <button type="button" className="btn primary small" onClick={()=>copy(shareUrl)}><Copy size={14}/> Copiar</button>
+                        <a href={shareUrl} target="_blank" rel="noreferrer" className="btn small">Abrir <ArrowUpRight size={13}/></a>
+                      </div>
+                    </>
+                  )}
+                </section>
+              </div>
+
+              <div className="kr-bento-wide">
+                <section className="kr-bento-card">
+                  <div className="kr-bento-head">
+                    <div>
+                      <h2>Próximos horários</h2>
+                      <small>Clique em um atendimento para abrir na agenda</small>
+                    </div>
+                    <button type="button" className="text-btn" onClick={()=>T('agenda')}>Ver agenda →</button>
                   </div>
                   {dashAppointments.filter(a=>a.status==='booked'&&a.starts>=new Date().toISOString()).slice(0,5).map(a=>(
                     <div
@@ -596,18 +801,27 @@ export default function Dashboard(){
                   ))}
                   {!dashAppointments.some(a=>a.status==='booked'&&a.starts>=new Date().toISOString())&&<Empty title="Agenda pronta para receber." text="Compartilhe seu link ou cadastre o primeiro atendimento."/>}
                 </section>
-                {(isManager||identity.can_share_link)&&(
-                  <section className="card">
-                    <span className="eyebrow">{role==='employee'?'SEU LINK DIRETO':'SEU LINK DE AGENDAMENTO'}</span>
-                    <h2>Menos mensagens.<br/>Mais horários marcados.</h2>
-                    <p>Seu cliente escolhe. A Kronner organiza.</p>
-                    <div className="link-box">{shareUrl}</div>
-                    <div className="actions">
-                      <button className="btn primary" onClick={()=>copy(shareUrl)}><Copy size={16}/> Copiar link</button>
-                      <a href={shareUrl} target="_blank" rel="noreferrer" className="btn">Abrir <ArrowUpRight size={15}/></a>
+
+                <section className="kr-bento-card">
+                  <div className="kr-bento-head">
+                    <div>
+                      <h2>Avisos e atenção</h2>
+                      <small>{unreadNoticesCount>0?`${unreadNoticesCount} pendência(s) para revisar`:'Tudo em dia por aqui'}</small>
                     </div>
-                  </section>
-                )}
+                    <button type="button" className="kr-corner-btn" aria-label="Ver avisos" onClick={()=>T('notices')}>
+                      <ArrowUpRight size={16}/>
+                    </button>
+                  </div>
+                  {notices.slice(0,3).map((n,i)=>(
+                    <div key={i} className="kr-mini-metric" style={{cursor:'pointer'}} onClick={()=>T(n.tab)}>
+                      <div>
+                        <strong style={{fontSize:'0.88rem'}}>{n.title}</strong>
+                        <span>{n.text}</span>
+                      </div>
+                    </div>
+                  ))}
+                  {!notices.length&&<p className="kr-sub">Nenhum aviso pendente no momento.</p>}
+                </section>
               </div>
             </>
           )}
@@ -1223,7 +1437,8 @@ export default function Dashboard(){
             </>
           )}
         </main>
-        <footer className="app-footer">
+      </div>
+      <footer className="app-footer">
           <span>Kronner · Tempo para o seu talento.</span>
           <nav className="app-footer-links" aria-label="Documentos legais">
             <Link href="/privacidade">Privacidade</Link>
@@ -1261,7 +1476,6 @@ export default function Dashboard(){
               <span>Mais</span>
             </button>
           </nav>
-        </div>
 
       {tour>=0&&(
         <div className="overlay">
