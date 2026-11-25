@@ -279,11 +279,16 @@ export default function Dashboard(){
   const unreadNoticesCount=notices.filter(n=>!n.holidayDecision).length;
 
   async function decideHoliday(holidayDate:string,decision:'open'|'closed'){
-    const nextCfg:Row={...cfg,holidayDecisions:{...(cfg.holidayDecisions||{}),[holidayDate]:decision}};
-    C(nextCfg);
     const msg=decision==='open'
       ?'Salvo: você vai trabalhar. O feriado continua na aba de Avisos caso queira mudar de ideia, sem novos alertas.'
       :'Salvo: agenda fechada no feriado. Ele continua na aba de Avisos caso queira mudar sua escolha.';
+    if(role==='employee'){
+      const ok=await mutate('team:holiday',{date:holidayDate,decision},false);
+      if(ok){Toast(msg);setTimeout(()=>Toast(''),5000);}
+      return;
+    }
+    const nextCfg:Row={...cfg,holidayDecisions:{...(cfg.holidayDecisions||{}),[holidayDate]:decision}};
+    C(nextCfg);
     if(data?.shop.active){
       const normalized=phone(nextCfg.phone||data.shop.cfg.phone||'34999990000');
       const ok=await mutate('settings',{name,cfg:{...settingsValues(nextCfg),phone:normalized,setupStep:step},activate:true},false);
@@ -453,7 +458,7 @@ export default function Dashboard(){
           {error&&<p role="alert" className="notice danger">{error}</p>}
           <div className="actions" style={{marginTop:12}}>
             <button disabled={busy} className="btn primary" onClick={async()=>{B(true);try{await call('create_shop');await load();}catch(e){E((e as Error).message);}finally{B(false);}}}>Criar minha barbearia</button>
-            <button type="button" className="btn" onClick={async()=>{await signOut();location.assign('/entrar?next=/painel');}}>Entrar com outra conta</button>
+            <button type="button" className="btn" onClick={async()=>{try{sessionStorage.removeItem('kroner:convite');for(const k of Object.keys(sessionStorage)){if(k.startsWith('booking:'))sessionStorage.removeItem(k);}}catch{}await signOut();location.assign('/entrar?next=/painel');}}>Entrar com outra conta</button>
           </div>
         </section>
       </main>
@@ -931,6 +936,7 @@ export default function Dashboard(){
                     <small>Não compareceu</small>
                   </div>
                 </article>
+                {canSeeFinance&&(
                 <article className="agenda-kpi">
                   <span className="agenda-kpi-icon copper"><Wallet size={18}/></span>
                   <div>
@@ -938,6 +944,7 @@ export default function Dashboard(){
                     <small>Recebidos no dia</small>
                   </div>
                 </article>
+                )}
               </div>
 
               <div className={'agenda-workspace'+(selectedApt?'':' full-width')}>
@@ -1143,7 +1150,7 @@ export default function Dashboard(){
                   {data.blocks.map(b=>(
                     <div className="line" key={b.id}>
                       <span>{localDay(b.starts).split('-').reverse().join('/')} · {at(b.starts)}–{at(b.ends)} · {b.reason}</span>
-                      <button className="text-btn" onClick={()=>mutate('unblock',{id:b.id})}>Liberar</button>
+                      {isManager&&<button className="text-btn" onClick={()=>mutate('unblock',{id:b.id})}>Liberar</button>}
                     </div>
                   ))}
                 </section>
@@ -1563,8 +1570,8 @@ export default function Dashboard(){
               {modal.type==='finish'&&(
                 <>
                   <p>{client(modal.item.client)} · {money(modal.item.price)}</p>
-                  <Select label="Situação do pagamento" name="payment" options={modal.item.membership?[['monthly','Incluído na mensalidade']]:[['full','Pagamento integral'],['partial','Pagamento parcial'],['none','Não pagou']]}/>
-                  {!modal.item.membership&&<><Field label="Valor pago (preencher se parcial)" name="amount" type="number" value="0" min="0" step="0.01" required={false}/>{paymentFields}</>}
+                  <Select label="Situação do pagamento" name="payment" options={modal.item.membership?[['monthly','Incluído na mensalidade']]:canPay?[['full','Pagamento integral'],['partial','Pagamento parcial'],['none','Não pagou']]:[['none','Não pagou']]}/>
+                  {!modal.item.membership&&canPay&&<><Field label="Valor pago (preencher se parcial)" name="amount" type="number" value="0" min="0" step="0.01" required={false}/>{paymentFields}</>}
                 </>
               )}
               {modal.type==='pay'&&(

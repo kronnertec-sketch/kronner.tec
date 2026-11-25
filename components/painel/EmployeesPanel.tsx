@@ -416,7 +416,7 @@ export function EmployeesPanel({ identity, call, onTeamChanged }: EmployeesPanel
                         <span className={`kr-tag ${m.status === 'active' ? 'emerald' : 'warn'}`}>
                           {STATUS_LABELS[m.status || 'active']}
                         </span>
-                        {m.commission_enabled && (
+                        {(isManager || m.id === identity.id) && m.commission_enabled && (
                           <span className="kr-tag brass">
                             <Percent size={12} /> {((m.commission_bps || 0) / 100).toFixed(0)}% comissão
                           </span>

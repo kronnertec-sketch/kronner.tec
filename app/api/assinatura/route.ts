@@ -263,9 +263,10 @@ export async function POST(request: Request) {
           : { id: seat.id, deleted: true }
         : { price: seatPrice, quantity: count };
 
+      const isPaidIncrease = subscription.status === 'active' && count > (seat?.quantity || 0);
       const updated = await stripe.subscriptions.update(subscription.id, {
         items: [item],
-        proration_behavior: 'create_prorations',
+        proration_behavior: isPaidIncrease ? 'always_invoice' : 'create_prorations',
         payment_behavior: 'error_if_incomplete',
       });
 
