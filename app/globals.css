@@ -8911,3 +8911,61 @@ textarea {
     transition: opacity 380ms ease-out;
   }
 }
+
+
+/* --- Editorial Barbershop Photography Frames (Desktop & Mobile) --- */
+.kl2-statement-grid {
+  display: grid;
+  grid-template-columns: 1.05fr 0.95fr;
+  gap: 44px;
+  align-items: center;
+}
+
+.kl2-photo-frame {
+  overflow: hidden;
+  border-radius: 24px;
+  background: #0a2d23;
+  box-shadow: 0 28px 60px -30px rgba(0, 0, 0, 0.45);
+  aspect-ratio: 16 / 10;
+}
+
+.kl2-photo-frame img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 520ms var(--kl2-ease-out);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .kl2-photo-frame:hover img {
+    transform: scale(1.03);
+  }
+}
+
+.kl2-photo-station {
+  margin-top: 26px;
+  aspect-ratio: 16 / 9;
+  border: 1px solid var(--kl2-line);
+  box-shadow: 0 20px 44px -28px rgba(16, 22, 24, 0.25);
+}
+
+.kl2-mob-photo {
+  margin-bottom: 24px;
+  border-radius: 20px;
+  aspect-ratio: 16 / 10;
+}
+
+.kl2-mob-photo-station {
+  margin-bottom: 18px;
+  border-radius: 18px;
+  aspect-ratio: 16 / 9;
+  border: 1px solid var(--kl2-line);
+  box-shadow: 0 16px 36px -24px rgba(16, 22, 24, 0.22);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kl2-photo-frame img {
+    transition: none;
+  }
+}

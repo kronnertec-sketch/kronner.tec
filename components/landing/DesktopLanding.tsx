@@ -231,13 +231,16 @@ export function DesktopLanding() {
           </div>
         </section>
 
-        {/* SCREEN 3: EDITORIAL SCROLL-REVEAL STATEMENT */}
+        {/* SCREEN 3: EDITORIAL SCROLL-REVEAL STATEMENT + BARBER PHOTO */}
         <section
-          ref={statementRef}
-          className="kl2-statement"
+          ref={el => {
+            statementRef.current = el;
+            revealRefs.current[2] = el;
+          }}
+          className="kl2-statement kl2-reveal"
           aria-label="Proposta da Kronner"
         >
-          <div className="kl2-wrap">
+          <div className="kl2-wrap kl2-statement-grid">
             <p className="kl2-statement-text">
               {STATEMENT_WORDS.map((word, idx) => {
                 const threshold = idx / STATEMENT_WORDS.length;
@@ -252,6 +255,14 @@ export function DesktopLanding() {
                 );
               })}
             </p>
+            <div className="kl2-photo-frame kl2-from-right" style={{ transitionDelay: '160ms' }}>
+              <img
+                src="/images/barber-craft.jpg"
+                alt="Barbeiro realizando corte degradê com precisão em barbearia moderna"
+                loading="lazy"
+                decoding="async"
+              />
+            </div>
           </div>
         </section>
 
@@ -282,6 +293,15 @@ export function DesktopLanding() {
                   <Check size={16} /> Cancele quando quiser, sem multa
                 </li>
               </ul>
+
+              <div className="kl2-photo-frame kl2-photo-station kl2-from-left" style={{ transitionDelay: '380ms' }}>
+                <img
+                  src="/images/barbershop-station.jpg"
+                  alt="Cadeira de barbearia clássica em ambiente moderno e organizado"
+                  loading="lazy"
+                  decoding="async"
+                />
+              </div>
             </div>
 
             <div className="kl2-pricing-card kl2-from-right" style={{ transitionDelay: '180ms' }}>

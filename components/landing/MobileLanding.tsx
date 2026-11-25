@@ -196,12 +196,23 @@ export function MobileLanding() {
           </div>
         </section>
 
-        {/* MOBILE EMERALD STATEMENT (SCROLL-SCRUBBED) */}
+        {/* MOBILE EMERALD STATEMENT + BARBER PHOTO */}
         <section
-          ref={statementRef}
-          className="kl2-mob-statement"
+          ref={el => {
+            statementRef.current = el;
+            revealRefs.current[1] = el;
+          }}
+          className="kl2-mob-statement kl2-reveal"
           aria-label="Proposta da Kronner"
         >
+          <div className="kl2-photo-frame kl2-mob-photo kl2-stagger">
+            <img
+              src="/images/barber-craft.jpg"
+              alt="Barbeiro realizando corte degradê com precisão em barbearia moderna"
+              loading="lazy"
+              decoding="async"
+            />
+          </div>
           <p>
             {MOB_STATEMENT_WORDS.map((word, idx) => {
               const threshold = idx / MOB_STATEMENT_WORDS.length;
@@ -228,7 +239,16 @@ export function MobileLanding() {
         >
           <h2 id="kl2-mob-pricing-title" className="kl2-mask-reveal">Preço direto, sem surpresa.</h2>
 
-          <div className="kl2-pricing-card kl2-mob-pricing-card kl2-stagger" style={{ transitionDelay: '140ms' }}>
+          <div className="kl2-photo-frame kl2-mob-photo-station kl2-stagger" style={{ transitionDelay: '90ms' }}>
+            <img
+              src="/images/barbershop-station.jpg"
+              alt="Cadeira de barbearia clássica em ambiente moderno e organizado"
+              loading="lazy"
+              decoding="async"
+            />
+          </div>
+
+          <div className="kl2-pricing-card kl2-mob-pricing-card kl2-stagger" style={{ transitionDelay: '160ms' }}>
             <div className="kl2-price-tag">
               <strong>R$ 99,90</strong>
               <span>/mês · 1 cadeira completa</span>
