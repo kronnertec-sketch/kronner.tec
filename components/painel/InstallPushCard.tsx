@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   AlertTriangle,
   BellRing,
@@ -47,6 +47,8 @@ export function InstallPushCard({ call, getToken, onToast }: InstallPushCardProp
   const [testing, setTesting] = useState(false);
   const [statusError, setStatusError] = useState('');
   const [checking, setChecking] = useState(true);
+  const onToastRef = useRef(onToast);
+  onToastRef.current = onToast;
 
   const refreshState = useCallback(async () => {
     const currentEnv = detectDeviceEnvironment();
@@ -96,7 +98,7 @@ export function InstallPushCard({ call, getToken, onToast }: InstallPushCardProp
       window.__kronnerInstallPrompt = null;
       setInstallPrompt(null);
       setEnv(detectDeviceEnvironment());
-      onToast('Kronner adicionada à tela inicial!');
+      onToastRef.current('Kronner adicionada à tela inicial!');
     };
 
     const mql = window.matchMedia?.('(display-mode: standalone)');
@@ -111,7 +113,7 @@ export function InstallPushCard({ call, getToken, onToast }: InstallPushCardProp
       window.removeEventListener('appinstalled', onAppInstalled);
       mql?.removeEventListener?.('change', onDisplayModeChange);
     };
-  }, [refreshState, onToast]);
+  }, [refreshState]);
 
   async function handleInstall() {
     if (!installPrompt) return;
@@ -171,8 +173,6 @@ export function InstallPushCard({ call, getToken, onToast }: InstallPushCardProp
         },
         body: JSON.stringify({
           endpoint: subscription.endpoint,
-          p256dh: subscription.p256dh,
-          auth: subscription.auth,
         }),
       });
       const json = await res.json().catch(() => ({}));

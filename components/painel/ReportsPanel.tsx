@@ -160,7 +160,7 @@ export function ReportsPanel({
       for (const p of payments) {
         if (p.paid_on < start || p.paid_on > end) continue;
         const ch = chargeMap.get(p.charge);
-        if (!ch || ch.direction !== 'in' || ['sale', 'stock_purchase'].includes(ch.category)) continue;
+        if (!ch || ch.direction !== 'in' || ['sale', 'stock_purchase', 'injection'].includes(ch.category)) continue;
         const apt = ch.appointment ? aptMap.get(ch.appointment) : undefined;
         if (selectedProf !== 'all' && apt?.professional !== selectedProf) continue;
         gross += p.amount;
@@ -172,7 +172,7 @@ export function ReportsPanel({
       for (const p of payments) paidByCh.set(p.charge, (paidByCh.get(p.charge) || 0) + p.amount);
       const pending = charges
         .filter(c => {
-          if (c.direction !== 'in' || ['sale', 'stock_purchase'].includes(c.category)) return false;
+          if (c.direction !== 'in' || ['sale', 'stock_purchase', 'injection'].includes(c.category)) return false;
           const ref = (c.due || c.created_at || '').slice(0, 10);
           if (ref < start || ref > end) return false;
           const apt = c.appointment ? aptMap.get(c.appointment) : undefined;
@@ -223,7 +223,13 @@ export function ReportsPanel({
       setCommError('Selecione um profissional específico para registrar o pagamento.');
       return;
     }
-    const amountCents = cents(payoutAmount);
+    let amountCents = 0;
+    try {
+      amountCents = cents(payoutAmount);
+    } catch {
+      setCommError('Informe um valor válido.');
+      return;
+    }
     if (!amountCents || amountCents <= 0) {
       setCommError('Informe um valor válido.');
       return;

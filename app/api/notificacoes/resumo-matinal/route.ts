@@ -14,6 +14,7 @@ type ShopProfessionalBrief = {
   userId: string;
   role: 'owner' | 'partner' | 'employee';
   name: string;
+  holidayDecisions?: Record<string, string>;
   todayCount: number;
   firstTime: string | null;
   subscriptions: StoredPushSubscription[];
@@ -37,7 +38,8 @@ function buildMorningCopy(shop: ShopMorningBrief, prof: ShopProfessionalBrief) {
   const parts: string[] = [];
 
   if (prof.todayCount > 0) {
-    const label = prof.todayCount === 1 ? '1 atendimento hoje' : `${prof.todayCount} atendimentos hoje`;
+    const label =
+      prof.todayCount === 1 ? '1 atendimento hoje' : `${prof.todayCount} atendimentos hoje`;
     parts.push(prof.firstTime ? `${label} (primeiro às ${prof.firstTime})` : label);
   } else {
     parts.push('Agenda livre hoje por enquanto');
@@ -59,9 +61,10 @@ function buildMorningCopy(shop: ShopMorningBrief, prof: ShopProfessionalBrief) {
     );
   }
 
+  const decisions = prof.holidayDecisions ?? (isManager ? shop.holidayDecisions : {});
   const upcomingHolidays = pendingHolidays(
     shop.day,
-    shop.holidayDecisions || {},
+    decisions || {},
     shop.state || undefined,
     shop.calendar || []
   ).filter((item) => item.days <= 14);
@@ -84,10 +87,15 @@ function buildMorningCopy(shop: ShopMorningBrief, prof: ShopProfessionalBrief) {
 }
 
 export const POST = handleSchedule(async (metadata) => {
+  // Guard against stale delayed replay after prolonged outage (> 4 hours late)
+  if (metadata.scheduledAt && Date.now() - metadata.scheduledAt.getTime() > 4 * 3600 * 1000) {
+    console.warn('[resumo-matinal] execução expirada ignorada:', metadata.executionId);
+    return;
+  }
+
   const admin = getAdminSupabase();
   if (!admin) {
-    console.warn('[resumo-matinal] SUPABASE_SERVICE_ROLE_KEY ausente; pulando envio.');
-    return;
+    throw new Error('[resumo-matinal] SUPABASE_SERVICE_ROLE_KEY ausente.');
   }
 
   const collected = await admin.rpc('kroner_collect_morning_summary', {
@@ -95,42 +103,58 @@ export const POST = handleSchedule(async (metadata) => {
   });
 
   if (collected.error || !Array.isArray(collected.data)) {
-    console.error('[resumo-matinal] erro ao coletar resumo:', collected.error?.message);
-    return;
+    throw new Error(`[resumo-matinal] erro ao coletar resumo: ${collected.error?.message || 'dados inválidos'}`);
   }
 
   const shops = collected.data as ShopMorningBrief[];
   const canPush = isWebPushConfigured();
+  const BATCH_SIZE = 5;
 
-  for (const shop of shops) {
-    for (const prof of shop.professionals || []) {
-      const { title, body, shouldNotify } = buildMorningCopy(shop, prof);
-      if (!shouldNotify) continue;
+  for (let i = 0; i < shops.length; i += BATCH_SIZE) {
+    const batch = shops.slice(i, i + BATCH_SIZE);
+    await Promise.allSettled(
+      batch.map(async (shop) => {
+        for (const prof of shop.professionals || []) {
+          try {
+            const { title, body, shouldNotify } = buildMorningCopy(shop, prof);
+            if (!shouldNotify) continue;
 
-      let sent = 0;
-      if (canPush && Array.isArray(prof.subscriptions) && prof.subscriptions.length > 0) {
-        const res = await sendPushBatch(
-          prof.subscriptions,
-          {
-            title,
-            body,
-            url: '/painel?tab=agenda',
-            tag: `kronner-morning-${shop.day}`,
-          },
-          admin
-        );
-        sent = res.sent;
-      }
+            let sent = 0;
+            if (canPush && Array.isArray(prof.subscriptions) && prof.subscriptions.length > 0) {
+              const res = await sendPushBatch(
+                prof.subscriptions,
+                {
+                  title,
+                  body,
+                  url: '/painel?tab=agenda',
+                  tag: `kronner-morning-${shop.day}`,
+                },
+                admin
+              );
+              sent = res.sent;
+            }
 
-      await admin.rpc('kroner_record_morning_notice', {
-        p_shop: shop.shopId,
-        p_recipient_user_id: prof.userId,
-        p_professional_id: prof.id,
-        p_day: shop.day,
-        p_title: title,
-        p_body: body,
-        p_push_sent: sent > 0,
-      });
-    }
+            const recorded = await admin.rpc('kroner_record_morning_notice', {
+              p_shop: shop.shopId,
+              p_recipient_user_id: prof.userId,
+              p_professional_id: prof.id,
+              p_day: shop.day,
+              p_title: title,
+              p_body: body,
+              p_push_sent: sent > 0,
+            });
+            if (recorded.error) {
+              console.error('[resumo-matinal] falha ao registrar aviso:', recorded.error.message);
+            }
+          } catch (err) {
+            console.error(
+              '[resumo-matinal] erro ao processar profissional:',
+              prof.id,
+              err instanceof Error ? err.message : err
+            );
+          }
+        }
+      })
+    );
   }
 });

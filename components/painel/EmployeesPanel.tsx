@@ -84,6 +84,7 @@ export function EmployeesPanel({ identity, call, onTeamChanged }: EmployeesPanel
     setInviteLink('');
     try {
       const token = await getToken({ template: 'kroner_claims' }).catch(() => getToken());
+      if (!token) throw new Error('Sessão expirada. Recarregue a página e tente novamente.');
       const pct = Math.max(0, Math.min(100, Number(invCommissionPct.replace(',', '.')) || 0));
       const response = await fetch('/api/equipe/convite', {
         method: 'POST',
@@ -424,7 +425,7 @@ export function EmployeesPanel({ identity, call, onTeamChanged }: EmployeesPanel
                       </div>
                     </div>
 
-                    {isManager && !isOwnerRow && (
+                    {isManager && !isOwnerRow && m.id !== identity.id && (identity.role === 'owner' || role !== 'partner') && (
                       <div className="kr-actions-row">
                         <select
                           aria-label={`Papel de ${m.name}`}
@@ -447,7 +448,7 @@ export function EmployeesPanel({ identity, call, onTeamChanged }: EmployeesPanel
                     )}
                   </div>
 
-                  {isManager && !isOwnerRow && (
+                  {isManager && !isOwnerRow && m.id !== identity.id && (identity.role === 'owner' || role !== 'partner') && (
                     <div className="kr-member-controls">
                       <div className="kr-comm-row">
                         <label className="kr-check-inline">

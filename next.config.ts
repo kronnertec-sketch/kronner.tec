@@ -24,7 +24,30 @@ if (rawSupabaseUrl) {
   }
 }
 
-const clerkHost = 'https://electric-ibex-2341.clerk.accounts.dev';
+function resolveClerkOrigin(): string {
+  const override = process.env.NEXT_PUBLIC_CLERK_FRONTEND_API?.trim();
+  if (override) {
+    try {
+      const parsed = new URL(override.startsWith('https://') ? override : `https://${override}`);
+      if (parsed.protocol === 'https:') return parsed.origin;
+    } catch {}
+  }
+
+  const pk = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY?.trim() || '';
+  const match = /^pk_(?:test|live)_([A-Za-z0-9+/=_-]+)$/.exec(pk);
+  if (match) {
+    try {
+      const decoded = Buffer.from(match[1], 'base64').toString('utf8').replace(/\$$/, '').trim();
+      if (/^[a-z0-9.-]+\.[a-z]{2,}$/i.test(decoded)) {
+        return `https://${decoded}`;
+      }
+    } catch {}
+  }
+
+  return 'https://electric-ibex-2341.clerk.accounts.dev';
+}
+
+const clerkHost = resolveClerkOrigin();
 
 const cspDirectives = [
   "default-src 'self'",

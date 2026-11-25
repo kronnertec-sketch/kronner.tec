@@ -11,6 +11,9 @@ export const dynamic = 'force-dynamic';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const ALLOWED_KINDS = new Set(['booking_created', 'booking_cancelled', 'booking_rescheduled']);
+const EVENT_RATE_WINDOW_MS = 60 * 1000;
+const EVENT_RATE_MAX = 12;
+const eventRates = new Map<string, number[]>();
 
 const reply = (data: unknown, status = 200) =>
   Response.json(data, { status, headers: { 'Cache-Control': 'no-store' } });
@@ -27,7 +30,8 @@ type ClaimedNotice = {
 
 export async function POST(request: Request) {
   const authHeader = request.headers.get('authorization');
-  if (!authHeader?.startsWith('Bearer ')) {
+  const bearer = authHeader?.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
+  if (!bearer) {
     return reply({ error: 'Entre na sua conta.' }, 401);
   }
 
@@ -44,9 +48,9 @@ export async function POST(request: Request) {
     return reply({ error: 'Evento de notificação inválido.' }, 400);
   }
 
-  // 1. Verify caller owns the client appointment via Clerk JWT + Supabase JWKS
+  // 1. Verify caller owns the client appointment + recent matching audit trail
   const userClient = createClient(supabaseEnv.url, supabaseEnv.publishableKey, {
-    accessToken: async () => authHeader.slice(7),
+    accessToken: async () => bearer,
     auth: { persistSession: false, autoRefreshToken: false },
   });
 
@@ -57,6 +61,21 @@ export async function POST(request: Request) {
 
   if (verify.error) {
     return reply({ error: 'Não foi possível validar o agendamento.' }, 403);
+  }
+
+  const actorUserId =
+    typeof verify.data?.actorUserId === 'string' ? verify.data.actorUserId : appointmentId;
+  const now = Date.now();
+  const hits = (eventRates.get(actorUserId) ?? []).filter((t) => now - t < EVENT_RATE_WINDOW_MS);
+  if (hits.length >= EVENT_RATE_MAX) {
+    eventRates.set(actorUserId, hits);
+    return reply({ error: 'Muitas solicitações em sequência. Aguarde um instante.' }, 429);
+  }
+  hits.push(now);
+  eventRates.set(actorUserId, hits);
+  if (eventRates.size > 1000) {
+    const first = eventRates.keys().next().value;
+    if (first) eventRates.delete(first);
   }
 
   // 2. Claim unsent push notifications for this appointment and deliver via Web Push

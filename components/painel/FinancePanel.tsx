@@ -28,6 +28,7 @@ type FinancePanelProps = {
   identity: IdentityInfo;
   isTeam: boolean;
   onNewCharge: () => void;
+  onNewRecurring?: () => void;
   onGenerateExpenses: () => void;
   onReceiveCharge: (charge: ChargeRow) => void;
 };
@@ -55,6 +56,7 @@ export function FinancePanel({
   identity,
   isTeam,
   onNewCharge,
+  onNewRecurring,
   onGenerateExpenses,
   onReceiveCharge,
 }: FinancePanelProps) {
@@ -137,6 +139,7 @@ export function FinancePanel({
       const ch = chargeMap.get(p.charge);
       if (!ch) continue;
       if (ch.direction === 'in') {
+        if (ch.category === 'injection') continue;
         grossIn += p.amount;
         fees += p.fee || 0;
         const m = byMethod[p.method] || { gross: 0, fee: 0, net: 0 };
@@ -187,6 +190,11 @@ export function FinancePanel({
         </div>
         {isManager && (
           <div className="kr-actions-row">
+            {onNewRecurring && (
+              <button type="button" className="btn" onClick={onNewRecurring}>
+                <Calendar size={15} /> Despesa fixa
+              </button>
+            )}
             <button type="button" className="btn" onClick={onGenerateExpenses}>
               <Repeat size={15} /> Gerar fixas do mês
             </button>

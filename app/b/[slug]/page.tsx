@@ -43,7 +43,9 @@ export default function Booking({ params }: { params: Promise<{ slug: string }> 
   const [chair, setChair] = useState<string | null>(null);
   const [authTab, setAuthTab] = useState<'signup' | 'signin'>('signup');
   useEffect(() => {
-    setChair(new URLSearchParams(location.search).get('p') || 'auto');
+    const raw = new URLSearchParams(location.search).get('p') || 'auto';
+    const validUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(raw);
+    setChair(raw === 'auto' || validUuid ? raw : 'auto');
   }, []);
   const call = useApi();
   const { isLoaded, isSignedIn } = useAuth();
@@ -145,7 +147,7 @@ export default function Booking({ params }: { params: Promise<{ slug: string }> 
     D('');
     T(null);
     SS([]);
-    const base = new Date(today() + 'T12:00:00Z');
+    const base = new Date(today(shop.cfg?.timezone) + 'T12:00:00Z');
     const all = Array.from({ length: Math.min(shop.cfg.maxDays || 21, 90) + 1 }, (_, i) => {
       const d = new Date(base);
       d.setUTCDate(d.getUTCDate() + i);
@@ -219,7 +221,8 @@ export default function Booking({ params }: { params: Promise<{ slug: string }> 
     }
   }
 
-  const returnPath = '/b/' + slug + (chair && chair !== 'auto' ? '?p=' + chair : '');
+  const returnPath =
+    '/b/' + slug + (chair && chair !== 'auto' ? '?p=' + encodeURIComponent(chair) : '');
   const chosen = shop?.services.filter((s: Row) => selected.includes(s.id)) || [];
   const duration = chosen.reduce((n: number, s: Row) => n + s.duration, 0);
   const range = (p: string) => {
@@ -313,10 +316,18 @@ export default function Booking({ params }: { params: Promise<{ slug: string }> 
                 onClick={async () => {
                   try {
                     sessionStorage.removeItem('booking:' + slug);
+                    sessionStorage.removeItem('kroner:convite');
                   } catch {}
                   await signOut();
+                  V([]);
+                  P('');
+                  D('');
+                  T(null);
+                  SS([]);
+                  DS([]);
                   F({ name: '', phone: '' });
                   setProfileSaved(false);
+                  E('');
                 }}
               >
                 <LogOut size={13} /> Trocar conta
@@ -372,7 +383,12 @@ export default function Booking({ params }: { params: Promise<{ slug: string }> 
                       role="tab"
                       aria-selected={authTab === 'signup'}
                       className={authTab === 'signup' ? 'is-active' : ''}
-                      onClick={() => setAuthTab('signup')}
+                      onClick={() => {
+                        if (window.location.hash) {
+                          history.replaceState(null, '', location.pathname + location.search);
+                        }
+                        setAuthTab('signup');
+                      }}
                     >
                       Criar conta grátis
                     </button>
@@ -381,7 +397,12 @@ export default function Booking({ params }: { params: Promise<{ slug: string }> 
                       role="tab"
                       aria-selected={authTab === 'signin'}
                       className={authTab === 'signin' ? 'is-active' : ''}
-                      onClick={() => setAuthTab('signin')}
+                      onClick={() => {
+                        if (window.location.hash) {
+                          history.replaceState(null, '', location.pathname + location.search);
+                        }
+                        setAuthTab('signin');
+                      }}
                     >
                       Já tenho conta
                     </button>

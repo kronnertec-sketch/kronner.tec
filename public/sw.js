@@ -1,12 +1,21 @@
 /* Kronner Service Worker — Web Push & Standalone PWA */
 
-self.addEventListener('install', (event) => {
+self.addEventListener('install', () => {
   self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(self.clients.claim());
 });
+
+function sanitizeRelativeUrl(raw) {
+  if (typeof raw !== 'string') return '/painel?tab=notices';
+  const trimmed = raw.trim();
+  if (!trimmed.startsWith('/') || trimmed.startsWith('//') || trimmed.includes('\\')) {
+    return '/painel?tab=notices';
+  }
+  return trimmed;
+}
 
 self.addEventListener('push', (event) => {
   if (!event.data) return;
@@ -20,7 +29,7 @@ self.addEventListener('push', (event) => {
 
   const title = typeof data.title === 'string' && data.title.trim() ? data.title.trim() : 'Kronner';
   const body = typeof data.body === 'string' ? data.body : '';
-  const url = typeof data.url === 'string' && data.url.startsWith('/') ? data.url : '/painel?tab=notices';
+  const url = sanitizeRelativeUrl(data.url);
   const tag = typeof data.tag === 'string' && data.tag ? data.tag : 'kronner-notice';
 
   const options = {
@@ -38,15 +47,22 @@ self.addEventListener('push', (event) => {
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  const targetPath =
-    (event.notification && event.notification.data && typeof event.notification.data.url === 'string'
-      ? event.notification.data.url
-      : '/painel?tab=notices');
+  const targetPath = sanitizeRelativeUrl(
+    event.notification && event.notification.data ? event.notification.data.url : '/painel?tab=notices'
+  );
 
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
       const origin = self.location.origin;
-      const targetUrl = new URL(targetPath, origin).href;
+      let targetUrl = new URL('/painel?tab=notices', origin).href;
+      try {
+        const resolved = new URL(targetPath, origin);
+        if (resolved.origin === origin) {
+          targetUrl = resolved.href;
+        }
+      } catch {
+        // Fallback stays same-origin
+      }
 
       for (const client of clientList) {
         if (client.url.startsWith(origin) && 'focus' in client) {

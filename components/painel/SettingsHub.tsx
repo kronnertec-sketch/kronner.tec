@@ -47,7 +47,7 @@ type SettingsHubProps = {
   identity: IdentityInfo;
   dirty: boolean;
   saving: boolean;
-  onSaveSettings: () => Promise<void>;
+  onSaveSettings: () => Promise<boolean>;
   onLookupCep: (cep: string) => Promise<void>;
   onOpenNewService: () => void;
   onOpenEditService: (svc: ServiceRow) => void;
@@ -141,9 +141,11 @@ export function SettingsHub({
   const [savedToast, setSavedToast] = useState(false);
 
   async function saveWithFeedback() {
-    await onSaveSettings();
-    setSavedToast(true);
-    setTimeout(() => setSavedToast(false), 3000);
+    const ok = await onSaveSettings();
+    if (ok) {
+      setSavedToast(true);
+      setTimeout(() => setSavedToast(false), 3000);
+    }
   }
 
   // Live preview: sample booking slots from Monday (or first enabled day)

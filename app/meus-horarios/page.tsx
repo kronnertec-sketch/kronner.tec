@@ -19,7 +19,7 @@ const STATUS_BADGE: Record<string, { label: string; cls: string }> = {
 export default function Appointments() {
   const call = useApi();
   const { isLoaded, isSignedIn, userId } = useAuth();
-  const { session } = useSession();
+  const { session, isLoaded: sessionLoaded } = useSession();
   const { signOut } = useClerk();
   const [data, S] = useState<Row[]>([]),
     [error, E] = useState(''),
@@ -58,8 +58,13 @@ export default function Appointments() {
   }
 
   useEffect(() => {
-    if (isLoaded) load();
-  }, [isLoaded, userId]);
+    if (!isLoaded || !sessionLoaded) return;
+    if (!isSignedIn) {
+      location.assign('/entrar?next=/meus-horarios');
+      return;
+    }
+    if (session) load();
+  }, [isLoaded, sessionLoaded, isSignedIn, userId, session?.id]);
 
   async function cancel(id: string) {
     if (!confirm('Cancelar este agendamento?')) return;
@@ -116,7 +121,7 @@ export default function Appointments() {
     setRescheduleSlot(null);
 
     const serviceIds = (rescheduleTarget.services || []).map((s: Row) => s.id).filter(Boolean);
-    const base = new Date(today() + 'T12:00:00Z');
+    const base = new Date(today(shopInfo.cfg?.timezone) + 'T12:00:00Z');
     const all = Array.from({ length: Math.min(shopInfo.cfg?.maxDays || 21, 90) + 1 }, (_, i) => {
       const d = new Date(base);
       d.setUTCDate(d.getUTCDate() + i);

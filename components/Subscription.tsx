@@ -28,6 +28,7 @@ export default function Subscription(){
    setBusy(true);
    try{
      const token=await getToken({template:'kroner_claims'}).catch(()=>getToken());
+     if(!token)throw new Error('Sessão expirada. Recarregue a página e tente novamente.');
      const response=await fetch('/api/assinatura',{
        method:'POST',
        headers:{

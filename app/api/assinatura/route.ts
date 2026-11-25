@@ -94,7 +94,7 @@ export async function POST(request: Request) {
 
   // Autentica e valida o titular da barbearia criptograficamente via Supabase + Clerk JWKS
   const api = createClient(supabaseEnv.url, supabaseEnv.publishableKey, {
-    accessToken: async () => token.slice(7),
+    accessToken: async () => token.slice(7).trim(),
     auth: { persistSession: false, autoRefreshToken: false },
   });
 
@@ -196,6 +196,9 @@ export async function POST(request: Request) {
         }, null)
       : null;
 
+    const latestBaseHistory = history.data.find(s =>
+      s.items.data.some(i => i.price.id === basePrice)
+    );
     if (subscription) {
       await syncShopSubscription({
         shop,
@@ -205,12 +208,12 @@ export async function POST(request: Request) {
         seatLimit: 1 + (seat?.quantity || 0),
         currentPeriodEnd: periodEndUnix ? new Date(periodEndUnix * 1000).toISOString() : null,
       });
-    } else if (history.data[0]) {
+    } else if (latestBaseHistory) {
       await syncShopSubscription({
         shop,
         stripeCustomerId: customer.id,
-        stripeSubscriptionId: history.data[0].id,
-        status: history.data[0].status,
+        stripeSubscriptionId: latestBaseHistory.id,
+        status: latestBaseHistory.status,
         seatLimit: 1,
         currentPeriodEnd: null,
       });
@@ -276,7 +279,7 @@ export async function POST(request: Request) {
         return acc === null ? end : Math.max(acc, end);
       }, null);
 
-      await syncShopSubscription({
+      const synced = await syncShopSubscription({
         shop,
         stripeCustomerId: customer.id,
         stripeSubscriptionId: updated.id,
@@ -284,8 +287,11 @@ export async function POST(request: Request) {
         seatLimit: 1 + count,
         currentPeriodEnd: updatedPeriodEnd ? new Date(updatedPeriodEnd * 1000).toISOString() : null,
       });
+      if (!synced) {
+        console.error('[assinatura/cadeiras] Stripe updated seats but Postgres sync failed for shop:', shop);
+      }
 
-      return reply({ ok: true });
+      return reply({ ok: true, synced });
     }
 
     if (subscription) return reply({ error: 'Já existe assinatura para esta barbearia.' }, 409);

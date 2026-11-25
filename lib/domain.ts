@@ -2,7 +2,7 @@ import {parsePhoneNumberFromString} from 'libphonenumber-js';
 export function phone(value:string){const digits=value.replace(/\D/g,'');if(digits.length<10)throw new Error('Informe o DDD e o número completo.');const p=parsePhoneNumberFromString(value,'BR');if(!p||p.country!=='BR'||!p.isValid())throw new Error('Informe um telefone brasileiro válido, com DDD.');return p.number;}
 export function cents(value:string|number){const n=Number(String(value).replace(',','.'));if(!Number.isFinite(n)||n<0)throw new Error('Informe um valor válido.');return Math.round(n*100);}
 export const money=(n:number)=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format((n||0)/100);
-export const today=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'America/Sao_Paulo'}).format(new Date());
+export const today=(tz='America/Sao_Paulo')=>new Intl.DateTimeFormat('en-CA',{timeZone:tz||'America/Sao_Paulo'}).format(new Date());
 export function debtStatus(total:number,paid:number,due:string,grace:number,day=today()){if(paid>=total)return 'Pago';const elapsed=(Date.parse(day)-Date.parse(due))/86400000;return elapsed>grace?'Atrasado':'Pendente';}
 export function fee(amount:number,bps:number){return Math.round(amount*bps/10000);}
 export function safeReturn(path:string|null){return path&&/^\/(b\/|meus-horarios|painel|equipe)/.test(path)&&!path.includes('\\')?path:'/painel';}

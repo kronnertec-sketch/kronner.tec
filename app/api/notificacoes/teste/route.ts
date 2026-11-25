@@ -2,6 +2,7 @@ import { createClient } from '@supabase/supabase-js';
 import { getSupabaseEnv } from '@/lib/server-origin';
 import {
   getAdminSupabase,
+  isAllowedPushEndpoint,
   isWebPushConfigured,
   sendPushBatch,
   type StoredPushSubscription,
@@ -18,7 +19,8 @@ const reply = (data: unknown, status = 200) =>
 
 export async function POST(request: Request) {
   const authHeader = request.headers.get('authorization');
-  if (!authHeader?.startsWith('Bearer ')) {
+  const bearer = authHeader?.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
+  if (!bearer) {
     return reply({ error: 'Entre na sua conta.' }, 401);
   }
 
@@ -37,16 +39,14 @@ export async function POST(request: Request) {
 
   const body = await request.json().catch(() => null);
   const endpoint = typeof body?.endpoint === 'string' ? body.endpoint.trim() : '';
-  const p256dh = typeof body?.p256dh === 'string' ? body.p256dh.trim() : '';
-  const auth = typeof body?.auth === 'string' ? body.auth.trim() : '';
 
-  if (!endpoint.startsWith('https://') || !p256dh || !auth) {
-    return reply({ error: 'Inscrição push inválida neste aparelho.' }, 400);
+  if (!isAllowedPushEndpoint(endpoint)) {
+    return reply({ error: 'Endpoint de notificação push inválido ou não autorizado.' }, 400);
   }
 
-  // Verify user is an active barber and owns this exact endpoint in DB
+  // Verify user is an active barber and read DB-stored subscription keys (never trust client keys)
   const userClient = createClient(supabaseEnv.url, supabaseEnv.publishableKey, {
-    accessToken: async () => authHeader.slice(7),
+    accessToken: async () => bearer,
     auth: { persistSession: false, autoRefreshToken: false },
   });
 
@@ -59,19 +59,30 @@ export async function POST(request: Request) {
     return reply({ error: 'Ative as notificações primeiro neste aparelho.' }, 403);
   }
 
+  const dbUserId = typeof check.data?.userId === 'string' ? check.data.userId : endpoint;
+  const dbP256dh = typeof check.data?.p256dh === 'string' ? check.data.p256dh : '';
+  const dbAuth = typeof check.data?.auth === 'string' ? check.data.auth : '';
+  const dbEndpoint = typeof check.data?.endpoint === 'string' ? check.data.endpoint : endpoint;
+
+  if (!dbP256dh || !dbAuth || !isAllowedPushEndpoint(dbEndpoint)) {
+    return reply({ error: 'Inscrição push inválida neste aparelho. Reative as notificações.' }, 400);
+  }
+
+  // Rate-limit strictly by authenticated userId (cannot be bypassed by rotating endpoints)
   const now = Date.now();
-  const hits = (testPushRate.get(endpoint) ?? []).filter((t) => now - t < RATE_WINDOW_MS);
+  const hits = (testPushRate.get(dbUserId) ?? []).filter((t) => now - t < RATE_WINDOW_MS);
   if (hits.length >= RATE_MAX) {
+    testPushRate.set(dbUserId, hits);
     return reply({ error: 'Aguarde um minuto antes de enviar outro teste.' }, 429);
   }
   hits.push(now);
-  testPushRate.set(endpoint, hits);
+  testPushRate.set(dbUserId, hits);
   if (testPushRate.size > 500) {
     const first = testPushRate.keys().next().value;
     if (first) testPushRate.delete(first);
   }
 
-  const sub: StoredPushSubscription = { endpoint, p256dh, auth };
+  const sub: StoredPushSubscription = { endpoint: dbEndpoint, p256dh: dbP256dh, auth: dbAuth };
   const result = await sendPushBatch(
     [sub],
     {

@@ -136,14 +136,30 @@ export default function Dashboard(){
     return session.getToken({template:'kroner_claims'}).catch(()=>session.getToken());
   },[session]);
 
+  const showToast=useCallback((msg:string)=>{
+    Toast(msg);
+    setTimeout(()=>Toast(''),4500);
+  },[]);
+
   useEffect(()=>{
     void registerKronnerServiceWorker();
+    const captureInstall=(e:Event)=>{
+      e.preventDefault();
+      (window as any).__kronnerInstallPrompt=e;
+    };
+    const clearInstall=()=>{(window as any).__kronnerInstallPrompt=null;};
+    window.addEventListener('beforeinstallprompt',captureInstall);
+    window.addEventListener('appinstalled',clearInstall);
     try{
       const initialTab=new URLSearchParams(window.location.search).get('tab');
       if(initialTab && ['overview','agenda','clients','monthly','team','finance','reports','notices','share','settings'].includes(initialTab)){
         T(initialTab);
       }
     }catch{}
+    return()=>{
+      window.removeEventListener('beforeinstallprompt',captureInstall);
+      window.removeEventListener('appinstalled',clearInstall);
+    };
   },[]);
 
   async function load(){
@@ -217,14 +233,14 @@ export default function Dashboard(){
   },[data?.shop.active,loadNotifications]);
 
   useEffect(()=>{
-    const prof=booking.professional||ownerChair||data?.professionals?.[0]?.id;
+    const prof=(role==='employee'&&modal?.type==='booking')?(identity.id||ownerChair):(booking.professional||ownerChair||data?.professionals?.[0]?.id);
     if(!modal||!['booking','move'].includes(modal.type)||!data||!booking.services?.length||!prof)return;
     let active=true;
     call('team:slots',{professional:prof,services:booking.services,day:booking.day,period:booking.period})
       .then(s=>{if(active){SL(s);BO(b=>({...b,professional:prof,start:''}));}})
       .catch(e=>E(e.message));
     return()=>{active=false;};
-  },[modal?.type,booking.professional,booking.day,booking.period,booking.services,data?.shop.slug,ownerChair]);
+  },[modal?.type,booking.professional,booking.day,booking.period,booking.services,data?.shop.slug,ownerChair,role,identity.id]);
 
   const mutate=async(action:string,payload:Row,close=true)=>{
     B(true);E('');
@@ -297,10 +313,11 @@ export default function Dashboard(){
 
   const shopDay=formatInTimeZone(new Date(),data?.shop.cfg.timezone||'America/Sao_Paulo','yyyy-MM-dd');
   const calendarEvents=(data?.calendar||[]).map((ev:Row)=>({date:ev.day,name:ev.name,scope:ev.scope}));
-  const holidays=pendingHolidays(shopDay,cfg.holidayDecisions,cfg.state,calendarEvents);
+  const myHolidayDecisions:Record<string,string>=(data as any)?.myHolidayDecisions||cfg.holidayDecisions||{};
+  const holidays=pendingHolidays(shopDay,myHolidayDecisions,cfg.state,calendarEvents);
   const allUpcomingHolidays=pendingHolidays(shopDay,{},cfg.state,calendarEvents);
   for(const item of allUpcomingHolidays){
-    const decision=cfg.holidayDecisions?.[item.date]||null;
+    const decision=myHolidayDecisions?.[item.date]||null;
     const statusText=decision==='open'
       ?' · Decisão atual: Vou trabalhar (você pode alterar a qualquer momento)'
       :decision==='closed'
@@ -334,7 +351,7 @@ export default function Dashboard(){
     const msg=decision==='open'
       ?'Salvo: você vai trabalhar. O feriado continua na aba de Avisos caso queira mudar de ideia, sem novos alertas.'
       :'Salvo: agenda fechada no feriado. Ele continua na aba de Avisos caso queira mudar sua escolha.';
-    if(role==='employee'){
+    if(role!=='owner'){
       const ok=await mutate('team:holiday',{date:holidayDate,decision},false);
       if(ok){Toast(msg);setTimeout(()=>Toast(''),5000);}
       return;
@@ -345,6 +362,7 @@ export default function Dashboard(){
       const normalized=phone(nextCfg.phone||data.shop.cfg.phone||'34999990000');
       const ok=await mutate('settings',{name,cfg:{...settingsValues(nextCfg),phone:normalized,setupStep:step},activate:true},false);
       if(ok){
+        await mutate('team:holiday',{date:holidayDate,decision},false);
         Toast(msg);
         setTimeout(()=>Toast(''),5000);
       }
@@ -376,13 +394,15 @@ export default function Dashboard(){
     }catch{}
   }
 
-  async function saveSettings(activate=false,nextStep=step){
+  async function saveSettings(activate=false,nextStep=step):Promise<boolean>{
     try{
       const normalized=phone(cfg.phone);
       const ok=await mutate('settings',{name,cfg:{...settingsValues(cfg),phone:normalized,setupStep:nextStep},activate},false);
       if(ok){ST(nextStep);if(activate)T('overview');}
+      return ok;
     }catch(e){
       E((e as Error).message);
+      return false;
     }
   }
 
@@ -891,15 +911,18 @@ export default function Dashboard(){
                       <ArrowUpRight size={16}/>
                     </button>
                   </div>
-                  {notices.slice(0,3).map((n,i)=>(
-                    <div key={i} className="kr-mini-metric" style={{cursor:'pointer'}} onClick={()=>T(n.tab)}>
+                  {[
+                    ...storedNotices.filter(n=>!n.readAt).map(n=>({title:n.title,text:n.body,tab:n.tab||'notices',id:n.id})),
+                    ...notices.map(n=>({title:n.title,text:n.text,tab:n.tab,id:''})),
+                  ].slice(0,3).map((n,i)=>(
+                    <div key={n.id||i} className="kr-mini-metric" style={{cursor:'pointer'}} onClick={()=>n.id?markStoredNoticeRead(n.id,n.tab):T(n.tab)}>
                       <div>
                         <strong style={{fontSize:'0.88rem'}}>{n.title}</strong>
                         <span>{n.text}</span>
                       </div>
                     </div>
                   ))}
-                  {!notices.length&&<p className="kr-sub">Nenhum aviso pendente no momento.</p>}
+                  {!notices.length&&!unreadStoredCount&&<p className="kr-sub">Nenhum aviso pendente no momento.</p>}
                 </section>
               </div>
             </>
@@ -1274,7 +1297,8 @@ export default function Dashboard(){
               identity={identity}
               isTeam={isTeam}
               onNewCharge={()=>M({type:'charge'})}
-              onGenerateExpenses={()=>mutate('generate_expenses',{month:today()})}
+              onNewRecurring={()=>M({type:'recurring'})}
+              onGenerateExpenses={()=>mutate('generate_expenses',{month:today(tz)})}
               onReceiveCharge={(ch:ChargeRow)=>M({type:'pay',item:ch})}
             />
           )}
@@ -1297,7 +1321,7 @@ export default function Dashboard(){
               <InstallPushCard
                 call={call}
                 getToken={getClerkToken}
-                onToast={(msg)=>{Toast(msg);setTimeout(()=>Toast(''),4500);}}
+                onToast={showToast}
               />
 
               {storedNotices.length>0&&(
@@ -1399,11 +1423,11 @@ export default function Dashboard(){
                 ...cfg,
                 creditFee:typeof cfg.creditFee==='number'?cfg.creditFee:Math.round((Number(String(cfg.creditFee||'0').replace(',','.'))||0)*100),
                 debitFee:typeof cfg.debitFee==='number'?cfg.debitFee:Math.round((Number(String(cfg.debitFee||'0').replace(',','.'))||0)*100),
-                maxDays:Number(cfg.maxDays||21),
-                grid:Number(cfg.grid||15),
-                notice:Number(cfg.notice||10),
-                cancelMinutes:Number(cfg.cancelMinutes||120),
-                grace:Number(cfg.grace||5),
+                maxDays:Number(cfg.maxDays??21),
+                grid:Number(cfg.grid??15),
+                notice:Number(cfg.notice??10),
+                cancelMinutes:Number(cfg.cancelMinutes??120),
+                grace:Number(cfg.grace??5),
               }}
               setCfg={(next)=>{C({...next,creditFee:(next.creditFee/100).toString(),debitFee:(next.debitFee/100).toString()});setSettingsDirty(true);}}
               shopName={name}
@@ -1413,7 +1437,7 @@ export default function Dashboard(){
               identity={identity}
               dirty={settingsDirty}
               saving={busy}
-              onSaveSettings={async()=>{await saveSettings(false,step);setSettingsDirty(false);}}
+              onSaveSettings={async()=>{const ok=await saveSettings(false,step);if(ok)setSettingsDirty(false);return ok;}}
               onLookupCep={lookupCep}
               onOpenNewService={()=>M({type:'service'})}
               onOpenEditService={(svc)=>M({type:'service',item:svc})}
@@ -1446,7 +1470,7 @@ export default function Dashboard(){
                     <label>Cidade *<input value={cfg.city} onChange={e=>C({...cfg,city:e.target.value})}/></label>
                     <label>UF *<input maxLength={2} value={cfg.state} onChange={e=>C({...cfg,state:e.target.value.toUpperCase()})}/></label>
                     <label>Fuso horário *<select value={cfg.timezone} onChange={e=>C({...cfg,timezone:e.target.value})}>{['America/Sao_Paulo','America/Manaus','America/Rio_Branco','America/Noronha'].map(x=><option key={x}>{x}</option>)}</select></label>
-                    {([['address','Logradouro'],['number','Número'],['complement','Complemento (opcional)'],['district','Bairro'],['ibge','Código IBGE (se disponível)']] as const).map(([key,label])=>(
+                    {([['address','Logradouro *'],['number','Número *'],['complement','Complemento (opcional)'],['district','Bairro *'],['ibge','Código IBGE (opcional)']] as const).map(([key,label])=>(
                       <label key={key}>{label}<input value={cfg[key]||''} onChange={e=>C({...cfg,[key]:e.target.value})}/></label>
                     ))}
                     <label>País<input readOnly value="Brasil"/></label>
@@ -1486,7 +1510,7 @@ export default function Dashboard(){
                       <label className="checkbox" style={{marginBottom:8}}>
                         <input
                           type="checkbox"
-                          checked={Number(cfg.buffer??10)>0}
+                          checked={cfg.buffer!==0&&cfg.buffer!=='0'}
                           onChange={e=>C({...cfg,buffer:e.target.checked?(Number(cfg.buffer)>0?cfg.buffer:10):0})}
                         />
                         <strong>Ativar intervalo de segurança entre atendimentos</strong>
@@ -1494,7 +1518,7 @@ export default function Dashboard(){
                       <p style={{margin:'0 0 12px',fontSize:13}}>
                         Esse tempo extra fica reservado automaticamente após cada atendimento caso você gaste mais tempo do que o horário programado, evitando atrasar o próximo cliente.
                       </p>
-                      {Number(cfg.buffer??10)>0&&(
+                      {cfg.buffer!==0&&cfg.buffer!=='0'&&(
                         <label style={{maxWidth:280,marginBottom:0}}>
                           Tempo de segurança (minutos)
                           <input
@@ -1542,7 +1566,7 @@ export default function Dashboard(){
                 {step===4&&(
                   <>
                     <div className="form-grid">
-                      <label>Avisar cliente após dias sem atendimento<input type="number" min="1" value={cfg.returnDays||30} onChange={e=>C({...cfg,returnDays:e.target.value})}/></label>
+                      <label>Avisar cliente após dias sem atendimento<input type="number" min="1" value={cfg.returnDays??30} onChange={e=>C({...cfg,returnDays:e.target.value})}/></label>
                     </div>
                     <p>Mensalistas, equipe e despesas recorrentes podem ser configurados depois, nas próprias abas.</p>
                   </>
@@ -1764,7 +1788,7 @@ export default function Dashboard(){
               )}
               {['booking','move'].includes(modal.type)&&(
                 <>
-                  {data.professionals.length>1&&(
+                  {(isManager||modal.type==='move')&&data.professionals.length>1&&(
                     <label>Profissional
                       <select value={booking.professional} onChange={e=>BO({...booking,professional:e.target.value,start:''})}>
                         {data.professionals.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}

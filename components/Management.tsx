@@ -6,7 +6,7 @@ import type {Row,Workspace} from '@/lib/types';
 
 export function Earnings(){
  const api=useApi(),[rows,setRows]=useState<Row[]>([]),[error,setError]=useState(''),[name,setName]=useState(''),[from,setFrom]=useState(today().slice(0,8)+'01'),[to,setTo]=useState(today());
- useEffect(()=>{api('manage:earnings').then(setRows).catch(e=>setError(e.message))},[api]);
+ useEffect(()=>{api('manage:earnings').then(res=>setRows(Array.isArray(res)?res:Array.isArray(res?.items)?res.items:[])).catch(e=>setError(e.message))},[api]);
  const selected=rows.filter(r=>(!name||r.name===name)&&r.day.slice(0,10)>=from&&r.day.slice(0,10)<=to);
  return (
   <details className="ux-accordion">

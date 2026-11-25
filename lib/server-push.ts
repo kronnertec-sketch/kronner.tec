@@ -14,6 +14,48 @@ export type PushPayload = {
   tag?: string;
 };
 
+const EXACT_PUSH_HOSTS = new Set([
+  'fcm.googleapis.com',
+  'android.googleapis.com',
+  'updates.push.services.mozilla.com',
+  'push.apple.com',
+  'notify.windows.com',
+  'push.samsungosp.com',
+]);
+
+const SUFFIX_PUSH_HOSTS = [
+  '.push.apple.com',
+  '.push.services.mozilla.com',
+  '.notify.windows.com',
+  '.push.samsungosp.com',
+];
+
+const IPV4_RE = /^\d{1,3}(\.\d{1,3}){3}$/;
+
+/**
+ * Strict Web Push endpoint allowlist to prevent SSRF & tarpit DoS.
+ * Accepts only default-port HTTPS URLs hosted on official browser push services.
+ */
+export function isAllowedPushEndpoint(raw: string): boolean {
+  if (!raw || raw.length > 2048) return false;
+  let parsed: URL;
+  try {
+    parsed = new URL(raw);
+  } catch {
+    return false;
+  }
+  if (parsed.protocol !== 'https:') return false;
+  if (parsed.username || parsed.password) return false;
+  if (parsed.port && parsed.port !== '443') return false;
+
+  const host = parsed.hostname.toLowerCase();
+  if (!host || host.includes(':') || IPV4_RE.test(host) || host === 'localhost') return false;
+  if (!parsed.pathname || parsed.pathname === '/') return false;
+
+  if (EXACT_PUSH_HOSTS.has(host)) return true;
+  return SUFFIX_PUSH_HOSTS.some((suffix) => host.endsWith(suffix) && host.length > suffix.length);
+}
+
 let vapidConfigured = false;
 
 export function isWebPushConfigured(): boolean {
@@ -51,10 +93,15 @@ export async function sendPushBatch(
     return { sent: 0, failed: 0, pruned: 0 };
   }
 
+  const safeUrl =
+    payload.url && payload.url.startsWith('/') && !payload.url.startsWith('//')
+      ? payload.url
+      : '/painel?tab=notices';
+
   const serialized = JSON.stringify({
     title: payload.title,
     body: payload.body,
-    url: payload.url || '/painel?tab=notices',
+    url: safeUrl,
     tag: payload.tag || 'kronner-notice',
   });
 
@@ -64,6 +111,11 @@ export async function sendPushBatch(
 
   await Promise.all(
     subscriptions.map(async (sub) => {
+      if (!isAllowedPushEndpoint(sub.endpoint)) {
+        failed += 1;
+        staleEndpoints.push(sub.endpoint);
+        return;
+      }
       try {
         await webpush.sendNotification(
           {
@@ -71,7 +123,7 @@ export async function sendPushBatch(
             keys: { p256dh: sub.p256dh, auth: sub.auth },
           },
           serialized,
-          { TTL: 60 * 60 * 12, urgency: 'high' }
+          { TTL: 60 * 60 * 12, urgency: 'high', timeout: 8000 }
         );
         sent += 1;
       } catch (err: unknown) {
@@ -83,7 +135,10 @@ export async function sendPushBatch(
         if (statusCode === 404 || statusCode === 410) {
           staleEndpoints.push(sub.endpoint);
         } else {
-          console.error('[web-push] delivery error:', statusCode || (err instanceof Error ? err.message : 'unknown'));
+          console.error(
+            '[web-push] delivery error:',
+            statusCode || (err instanceof Error ? err.message : 'unknown')
+          );
         }
       }
     })
