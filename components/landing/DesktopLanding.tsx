@@ -151,24 +151,40 @@ export function DesktopLanding() {
       </header>
 
       <main id="conteudo-desktop">
-        {/* SCREEN 1: HERO + REAL STATIC DASHBOARD */}
+        {/* SCREEN 1: HERO (BARBER PHOTO ABOVE THE FOLD + REAL STATIC DASHBOARD) */}
         <section className="kl2-hero" aria-labelledby="kl2-hero-title">
           <div className="kl2-wrap">
-            <div className="kl2-hero-copy">
-              <h1 id="kl2-hero-title" className="kl2-enter kl2-d1">
-                Sua barbearia no ritmo certo.
-              </h1>
-              <p className="kl2-hero-sub kl2-enter kl2-d2">
-                Agenda por cadeira, link para o cliente agendar sozinho e financeiro com comissões
-                em um painel limpo. Teste grátis por 15 dias sem cartão.
-              </p>
-              <div className="kl2-hero-actions kl2-enter kl2-d3">
-                <Link href="/entrar?mode=signup" className="kl2-btn kl2-btn-primary kl2-btn-lg">
-                  Começar 15 dias grátis <ArrowRight size={16} />
-                </Link>
-                <a href="#sistema" className="kl2-btn kl2-btn-outline kl2-btn-lg">
-                  Testar o sistema abaixo
-                </a>
+            <div className="kl2-hero-split">
+              <div className="kl2-hero-copy">
+                <h1 id="kl2-hero-title" className="kl2-enter kl2-d1">
+                  Sua barbearia no ritmo certo.
+                </h1>
+                <p className="kl2-hero-sub kl2-enter kl2-d2">
+                  Agenda por cadeira, link para o cliente agendar sozinho e financeiro com comissões
+                  em um painel feito para o dia a dia da barbearia. 15 dias grátis sem cartão.
+                </p>
+                <div className="kl2-hero-actions kl2-enter kl2-d3">
+                  <Link href="/entrar?mode=signup" className="kl2-btn kl2-btn-primary kl2-btn-lg">
+                    Começar 15 dias grátis <ArrowRight size={16} />
+                  </Link>
+                  <a href="#sistema" className="kl2-btn kl2-btn-outline kl2-btn-lg">
+                    Testar o sistema abaixo
+                  </a>
+                </div>
+              </div>
+
+              <div className="kl2-hero-photo-wrap kl2-enter kl2-d3">
+                <div className="kl2-photo-frame kl2-hero-photo">
+                  <img
+                    src="/images/barber-craft.jpg"
+                    alt="Barbeiro realizando corte degradê com precisão em barbearia moderna"
+                    decoding="async"
+                  />
+                </div>
+                <div className="kl2-hero-float-pill" aria-hidden="true">
+                  <i className="kl2-live-dot" />
+                  <span><b>14:50</b> · Corte degradê · Confirmado</span>
+                </div>
               </div>
             </div>
 
@@ -257,8 +273,8 @@ export function DesktopLanding() {
             </p>
             <div className="kl2-photo-frame kl2-from-right" style={{ transitionDelay: '160ms' }}>
               <img
-                src="/images/barber-craft.jpg"
-                alt="Barbeiro realizando corte degradê com precisão em barbearia moderna"
+                src="/images/barbershop-station.jpg"
+                alt="Cadeira de barbearia clássica em ambiente moderno e organizado"
                 loading="lazy"
                 decoding="async"
               />
@@ -293,15 +309,6 @@ export function DesktopLanding() {
                   <Check size={16} /> Cancele quando quiser, sem multa
                 </li>
               </ul>
-
-              <div className="kl2-photo-frame kl2-photo-station kl2-from-left" style={{ transitionDelay: '380ms' }}>
-                <img
-                  src="/images/barbershop-station.jpg"
-                  alt="Cadeira de barbearia clássica em ambiente moderno e organizado"
-                  loading="lazy"
-                  decoding="async"
-                />
-              </div>
             </div>
 
             <div className="kl2-pricing-card kl2-from-right" style={{ transitionDelay: '180ms' }}>

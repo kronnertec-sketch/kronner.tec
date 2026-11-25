@@ -138,12 +138,26 @@ export function MobileLanding() {
       </header>
 
       <main>
-        {/* MOBILE HERO */}
+        {/* MOBILE HERO (BARBER PHOTO ABOVE THE FOLD) */}
         <section className="kl2-mob-hero" aria-labelledby="kl2-mob-hero-title">
-          <h1 id="kl2-mob-hero-title" className="kl2-enter kl2-d1">
+          <div className="kl2-hero-photo-wrap kl2-mob-hero-photo-wrap kl2-enter kl2-d1">
+            <div className="kl2-photo-frame kl2-mob-hero-photo">
+              <img
+                src="/images/barber-craft.jpg"
+                alt="Barbeiro realizando corte degradê com precisão em barbearia moderna"
+                decoding="async"
+              />
+            </div>
+            <div className="kl2-hero-float-pill is-mobile" aria-hidden="true">
+              <i className="kl2-live-dot" />
+              <span><b>14:50</b> · Corte degradê · Confirmado</span>
+            </div>
+          </div>
+
+          <h1 id="kl2-mob-hero-title" className="kl2-enter kl2-d2">
             Sua barbearia no ritmo certo.
           </h1>
-          <p className="kl2-mob-sub kl2-enter kl2-d2">
+          <p className="kl2-mob-sub kl2-enter kl2-d3">
             Agenda por cadeira, link para o cliente agendar sozinho e financeiro com comissões. 15
             dias grátis sem cartão.
           </p>
@@ -196,7 +210,7 @@ export function MobileLanding() {
           </div>
         </section>
 
-        {/* MOBILE EMERALD STATEMENT + BARBER PHOTO */}
+        {/* MOBILE EMERALD STATEMENT + BARBERSHOP STATION PHOTO */}
         <section
           ref={el => {
             statementRef.current = el;
@@ -207,8 +221,8 @@ export function MobileLanding() {
         >
           <div className="kl2-photo-frame kl2-mob-photo kl2-stagger">
             <img
-              src="/images/barber-craft.jpg"
-              alt="Barbeiro realizando corte degradê com precisão em barbearia moderna"
+              src="/images/barbershop-station.jpg"
+              alt="Cadeira de barbearia clássica em ambiente moderno e organizado"
               loading="lazy"
               decoding="async"
             />
@@ -239,16 +253,7 @@ export function MobileLanding() {
         >
           <h2 id="kl2-mob-pricing-title" className="kl2-mask-reveal">Preço direto, sem surpresa.</h2>
 
-          <div className="kl2-photo-frame kl2-mob-photo-station kl2-stagger" style={{ transitionDelay: '90ms' }}>
-            <img
-              src="/images/barbershop-station.jpg"
-              alt="Cadeira de barbearia clássica em ambiente moderno e organizado"
-              loading="lazy"
-              decoding="async"
-            />
-          </div>
-
-          <div className="kl2-pricing-card kl2-mob-pricing-card kl2-stagger" style={{ transitionDelay: '160ms' }}>
+          <div className="kl2-pricing-card kl2-mob-pricing-card kl2-stagger" style={{ transitionDelay: '140ms' }}>
             <div className="kl2-price-tag">
               <strong>R$ 99,90</strong>
               <span>/mês · 1 cadeira completa</span>
