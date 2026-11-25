@@ -6205,10 +6205,90 @@ textarea {
   gap: 18px;
 }
 
-.kr-topnav {
+/* --- Branded Kronner Entrance: K mark -> writes "kronner" -> opens panel --- */
+@keyframes krSplashMarkIn {
+  from {
+    opacity: 0;
+    transform: scale(0.82);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes krSplashLetterIn {
+  from {
+    opacity: 0;
+    transform: translateY(7px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.kr-splash {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: linear-gradient(145deg, #095740 0%, #0D6E52 54%, #0B251E 100%);
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  opacity: 1;
+  transition: opacity 380ms var(--ease-out-kr), transform 380ms var(--ease-out-kr);
+}
+
+.kr-splash--exit {
+  opacity: 0;
+  transform: scale(1.02);
+  pointer-events: none;
+}
+
+.kr-splash-stage {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
+
+.kr-splash-svg {
+  width: min(296px, 74vw);
+  height: auto;
+  overflow: visible;
+}
+
+.kr-splash-mark {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: krSplashMarkIn 380ms var(--ease-out-kr) both;
+}
+
+.kr-splash-letter {
+  opacity: 0;
+  animation: krSplashLetterIn 260ms var(--ease-out-kr) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kr-splash-mark,
+  .kr-splash-letter {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.kr-topnav-sticky {
   position: sticky;
-  top: 14px;
+  top: 0;
   z-index: 40;
+  margin: -18px -22px 0;
+  padding: 14px 22px 10px;
+  background: linear-gradient(180deg, #ECEFED 0%, #ECEFED 80%, rgba(236, 239, 237, 0) 100%);
+}
+
+.kr-topnav {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -6381,7 +6461,7 @@ textarea {
 
 .kr-rail {
   position: sticky;
-  top: 86px;
+  top: 96px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -6856,8 +6936,11 @@ textarea {
     padding: 12px 12px 86px;
     gap: 14px;
   }
+  .kr-topnav-sticky {
+    margin: -12px -12px 0;
+    padding: 10px 12px 8px;
+  }
   .kr-topnav {
-    top: 8px;
     padding: 8px 12px;
     border-radius: 20px;
   }

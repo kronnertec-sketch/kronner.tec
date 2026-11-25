@@ -19,7 +19,7 @@ import {
   RefreshCw,Trash2,Lock,UserCog
 } from 'lucide-react';
 import {useApi} from '@/lib/supabase';
-import {useAuth,useClerk} from '@clerk/react';
+import {useAuth,useClerk,useSession,useUser} from '@clerk/react';
 import {cents,money,phone,today,days,debtStatus,settingsDraft,settingsValues} from '@/lib/domain';
 import {defaults,type Workspace,type Row} from '@/lib/types';
 import {fromZonedTime,formatInTimeZone} from 'date-fns-tz';
@@ -93,6 +93,8 @@ export default function Dashboard(){
   const [onboarding,setOnboarding]=useState(false);
   const call=useApi();
   const {isLoaded,isSignedIn}=useAuth();
+  const {session,isLoaded:sessionLoaded}=useSession();
+  const {user}=useUser();
   const {signOut}=useClerk();
   const handleEntranceDone=useCallback(()=>setWaveReady(true),[]);
   const [data,S]=useState<Workspace|null>(null),
@@ -170,9 +172,10 @@ export default function Dashboard(){
   }
 
   useEffect(()=>{
-    if(isLoaded&&isSignedIn)load();
-    else if(isLoaded&&!isSignedIn)location.assign('/entrar?next=/painel');
-  },[isLoaded,isSignedIn]);
+    if(!isLoaded||!sessionLoaded)return;
+    if(isSignedIn&&session)load();
+    else if(!isSignedIn)location.assign('/entrar?next=/painel');
+  },[isLoaded,sessionLoaded,isSignedIn,session?.id]);
 
   useEffect(()=>{
     const prof=booking.professional||ownerChair||data?.professionals?.[0]?.id;
@@ -433,10 +436,27 @@ export default function Dashboard(){
       <div style={{minHeight:'100vh',background:'#0D6E52'}} aria-busy="true"/>
     </>
   );
+  const currentEmail=user?.primaryEmailAddress?.emailAddress||'';
   if(onboarding)return (
     <>
       <KronnerEntrance loading={false} onComplete={handleEntranceDone} hasError={!!error}/>
-      <main className="login"><Link href="/" className="brand"><BrandLogo variant="dark" height={34}/></Link><section className="login-card"><h1>Abrir minha barbearia</h1><p>Você será o titular e terá a primeira cadeira. Se recebeu um convite de equipe, abra o link enviado pelo responsável.</p>{error&&<p role="alert" className="notice danger">{error}</p>}<button disabled={busy} className="btn primary" onClick={async()=>{B(true);try{await call('create_shop');await load();}catch(e){E((e as Error).message);}finally{B(false);}}}>Criar minha barbearia</button></section></main>
+      <main className="login">
+        <Link href="/" className="brand"><BrandLogo variant="dark" height={34}/></Link>
+        <section className="login-card">
+          <h1>Abrir minha barbearia</h1>
+          <p>Você será o titular e terá a primeira cadeira. Se recebeu um convite de equipe, abra o link enviado pelo responsável.</p>
+          {currentEmail&&(
+            <p className="notice" style={{fontSize:13}}>
+              Conta conectada: <strong>{currentEmail}</strong>. Se sua barbearia já existe em outro e-mail ou método de login (ex.: Google vs. código), troque de conta abaixo antes de criar uma nova.
+            </p>
+          )}
+          {error&&<p role="alert" className="notice danger">{error}</p>}
+          <div className="actions" style={{marginTop:12}}>
+            <button disabled={busy} className="btn primary" onClick={async()=>{B(true);try{await call('create_shop');await load();}catch(e){E((e as Error).message);}finally{B(false);}}}>Criar minha barbearia</button>
+            <button type="button" className="btn" onClick={async()=>{await signOut();location.assign('/entrar?next=/painel');}}>Entrar com outra conta</button>
+          </div>
+        </section>
+      </main>
     </>
   );
   if(!data)return <div className="card"><h1>Não foi possível abrir o painel.</h1><p>{error}</p><button className="btn" onClick={load}>Tentar novamente</button></div>;
@@ -536,7 +556,8 @@ export default function Dashboard(){
         </div>
       </aside>
 
-      {/* Floating Top Pill Navigation Bar */}
+      {/* Floating Top Pill Navigation Bar (inside sticky backdrop so scrolling content never peeks above) */}
+      <div className="kr-topnav-sticky">
       <header className="kr-topnav">
         <div className="kr-topnav-left">
           <button type="button" className="kr-mobile-trigger" onClick={()=>MENU(!menu)} aria-label="Abrir menu">
@@ -575,6 +596,7 @@ export default function Dashboard(){
           </div>
         </div>
       </header>
+      </div>
 
       <div className="kr-body-grid">
         {/* 3-Group Floating Left Icon Rail */}
