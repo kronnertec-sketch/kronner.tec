@@ -101,3 +101,18 @@ test('Buffer release SQL migration enforces search_path, lock order, and access 
     'Must lock shops before appointments'
   );
 });
+
+test('Overtime slots SQL migration respects overtimeMinutes and preserves buffer_released', () => {
+  const sql = fs.readFileSync(
+    path.join(process.cwd(), 'supabase/migrations/20261125060000_overtime_slots.sql'),
+    'utf8'
+  );
+  assert.ok(sql.includes('overtimeMinutes'), 'chair_slots must read cfg.overtimeMinutes');
+  assert.ok(sql.includes('overtime_minutes'), 'chair_slots must apply overtime_minutes');
+  assert.ok(sql.includes('buffer_released'), 'chair_slots must preserve buffer_released support');
+  assert.ok(sql.includes("set search_path = ''"), 'chair_slots must pin search_path');
+  assert.ok(
+    sql.includes('while cursor_t < period_hi'),
+    'chair_slots must prevent bookings starting at or after closing/period_hi'
+  );
+});

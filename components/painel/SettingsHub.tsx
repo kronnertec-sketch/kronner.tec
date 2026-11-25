@@ -8,6 +8,7 @@ import {
   CreditCard,
   Crown,
   ExternalLink,
+  MessageSquareQuote,
   Plus,
   Save,
   Scissors,
@@ -53,6 +54,9 @@ type SettingsHubProps = {
   onOpenEditService: (svc: ServiceRow) => void;
   onToggleService: (svc: ServiceRow) => Promise<void>;
   onGoToEmployees: () => void;
+  showWhatsappShortcutAlert?: boolean;
+  onOpenWhatsappTutorial?: () => void;
+  onMarkWhatsappShortcutDone?: () => void;
   call: ApiCallFn;
 };
 
@@ -73,6 +77,9 @@ export function SettingsHub({
   onOpenEditService,
   onToggleService,
   onGoToEmployees,
+  showWhatsappShortcutAlert,
+  onOpenWhatsappTutorial,
+  onMarkWhatsappShortcutDone,
 }: SettingsHubProps) {
   const isOwner = identity.role === 'owner';
   const isManager = identity.role === 'owner' || identity.role === 'partner';
@@ -140,6 +147,15 @@ export function SettingsHub({
   );
   const [savedToast, setSavedToast] = useState(false);
   const [bufferEnabled, setBufferEnabled] = useState((cfg.buffer ?? 10) > 0);
+  const [overtimeEnabled, setOvertimeEnabled] = useState((cfg.overtimeMinutes ?? 0) > 0);
+
+  const overtimePreviewLimit = useMemo(() => {
+    const mins = Math.max(0, Math.min(180, Number(cfg.overtimeMinutes || 0)));
+    const total = 19 * 60 + mins;
+    const h = String(Math.floor(total / 60)).padStart(2, '0');
+    const m = String(total % 60).padStart(2, '0');
+    return `${h}:${m}`;
+  }, [cfg.overtimeMinutes]);
 
   async function saveWithFeedback() {
     const ok = await onSaveSettings();
@@ -198,6 +214,35 @@ export function SettingsHub({
           </div>
         )}
       </div>
+
+      {showWhatsappShortcutAlert && onOpenWhatsappTutorial && onMarkWhatsappShortcutDone && (
+        <div className="card kr-shortcut-banner" role="region" aria-label="Dica de atalho rápido no WhatsApp">
+          <div className="kr-shortcut-banner-main">
+            <span className="kr-shortcut-banner-icon" aria-hidden="true">
+              <MessageSquareQuote size={19} />
+            </span>
+            <div>
+              <strong>
+                Atalho rápido no WhatsApp (<span className="mono">/agendamento</span> ou{' '}
+                <span className="mono">@@agendar</span>)
+              </strong>
+              <p>
+                Configure uma frase pronta no teclado ou no WhatsApp Business para enviar seu link
+                de agendamento aos clientes em 2 segundos. Depois de concluir, clique em OK para
+                ocultar este aviso.
+              </p>
+            </div>
+          </div>
+          <div className="kr-shortcut-banner-actions">
+            <button type="button" className="btn primary small" onClick={onOpenWhatsappTutorial}>
+              Abrir tutorial
+            </button>
+            <button type="button" className="btn small" onClick={onMarkWhatsappShortcutDone}>
+              <CheckCircle2 size={14} /> OK, já configurei
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="kr-settings-layout">
         <nav className="kr-settings-nav" aria-label="Categorias de configurações">
@@ -409,6 +454,62 @@ export function SettingsHub({
                         }
                       />
                     </label>
+                  )}
+                </div>
+
+                <div className="kr-buffer-box">
+                  <label className="kr-check-inline">
+                    <input
+                      type="checkbox"
+                      checked={overtimeEnabled}
+                      onChange={e => {
+                        const checked = e.target.checked;
+                        setOvertimeEnabled(checked);
+                        setCfg({
+                          ...cfg,
+                          overtimeMinutes: checked
+                            ? cfg.overtimeMinutes && cfg.overtimeMinutes > 0
+                              ? cfg.overtimeMinutes
+                              : 30
+                            : 0,
+                        });
+                      }}
+                    />
+                    <strong>Permitir último atendimento ultrapassar o encerramento</strong>
+                  </label>
+                  <p className="kr-buffer-help">
+                    Por padrão, o sistema respeita 100% o horário de fechamento (se você encerra às
+                    19:00, um corte de 50 min não aparece às 18:20 porque terminaria às 19:10).
+                    Ative esta opção se quiser liberar aquele último cliente próximo do fechamento,
+                    mesmo que o término passe um pouco do expediente.
+                  </p>
+                  {overtimeEnabled && (
+                    <>
+                      <label className="kr-buffer-input-label">
+                        Tolerância máxima após o encerramento (minutos)
+                        <input
+                          type="number"
+                          min={5}
+                          max={180}
+                          step={5}
+                          value={cfg.overtimeMinutes || ''}
+                          onChange={e =>
+                            setCfg({
+                              ...cfg,
+                              overtimeMinutes: Math.max(
+                                0,
+                                Math.min(180, Number(e.target.value) || 0)
+                              ),
+                            })
+                          }
+                        />
+                      </label>
+                      <small className="kr-buffer-example">
+                        Exemplo: fechando às 19:00 com {cfg.overtimeMinutes || 0} min de tolerância,
+                        o cliente ainda pode iniciar antes das 19:00 desde que o serviço termine até{' '}
+                        <strong>{overtimePreviewLimit}</strong>.
+                      </small>
+                    </>
                   )}
                 </div>
               </div>

@@ -21,6 +21,7 @@ export type ShopConfig = {
   grid: number;
   notice: number;
   buffer?: number;
+  overtimeMinutes?: number;
   cancelMinutes: number;
   grace: number;
   creditFee: number;

@@ -10,6 +10,7 @@ import {ReportsPanel} from '@/components/painel/ReportsPanel';
 import {EmployeesPanel} from '@/components/painel/EmployeesPanel';
 import {SettingsHub} from '@/components/painel/SettingsHub';
 import {InstallPushCard} from '@/components/painel/InstallPushCard';
+import {WhatsappShortcutCard,WhatsappShortcutPrompt} from '@/components/painel/WhatsappShortcutCard';
 import {registerKronnerServiceWorker} from '@/lib/push-client';
 import {ROLE_LABELS,type IdentityInfo,type ShopConfig,type ChargeRow} from '@/components/painel/types';
 import {useCallback,useEffect,useState} from 'react';
@@ -121,7 +122,8 @@ export default function Dashboard(){
     [booking,BO]=useState<Row>({services:[],day:today(),period:'afternoon',start:'',client:'',name:'',phone:''}),
     [slots,SL]=useState<Row[]>([]),
     [storedNotices,setStoredNotices]=useState<Row[]>([]),
-    [releasedBuffers,setReleasedBuffers]=useState<Record<string,boolean>>({});
+    [releasedBuffers,setReleasedBuffers]=useState<Record<string,boolean>>({}),
+    [whatsappShortcutDone,setWhatsappShortcutDone]=useState<boolean>(true);
 
   const loadNotifications=useCallback(async()=>{
     try{
@@ -234,6 +236,25 @@ export default function Dashboard(){
   },[data?.shop.active,loadNotifications]);
 
   useEffect(()=>{
+    if(!data?.shop.id)return;
+    const key=`kroner:whatsapp-shortcut-done:${data.shop.id}:${identity.id||'owner'}`;
+    try{
+      setWhatsappShortcutDone(localStorage.getItem(key)==='1');
+    }catch{
+      setWhatsappShortcutDone(false);
+    }
+  },[data?.shop.id,identity.id]);
+
+  const markWhatsappShortcutDone=useCallback(()=>{
+    if(data?.shop.id){
+      const key=`kroner:whatsapp-shortcut-done:${data.shop.id}:${identity.id||'owner'}`;
+      try{localStorage.setItem(key,'1');}catch{}
+    }
+    setWhatsappShortcutDone(true);
+    showToast('Atalho rápido do WhatsApp marcado como configurado!');
+  },[data?.shop.id,identity.id,showToast]);
+
+  useEffect(()=>{
     if(!selectedAptId||modal)return;
     const onKey=(e:KeyboardEvent)=>{
       if(e.key==='Escape')setSelectedAptId('');
@@ -343,7 +364,8 @@ export default function Dashboard(){
     });
   }
   const unreadStoredCount=storedNotices.filter(n=>!n.readAt).length;
-  const unreadNoticesCount=notices.filter(n=>!n.holidayDecision).length+unreadStoredCount;
+  const showWhatsappShortcutNotice=Boolean(data?.shop.active&&(role==='owner'||role==='partner'||identity.can_share_link)&&!whatsappShortcutDone);
+  const unreadNoticesCount=notices.filter(n=>!n.holidayDecision).length+unreadStoredCount+(showWhatsappShortcutNotice?1:0);
 
   async function markStoredNoticeRead(id:string,targetTab?:string){
     setStoredNotices(prev=>prev.map(n=>n.id===id?{...n,readAt:n.readAt||new Date().toISOString()}:n));
@@ -633,6 +655,16 @@ export default function Dashboard(){
       <div className={'kr-shell '+(waveReady?'kr-wave-ready':'')}>
       <a className="kl-skip" href="#painel-conteudo">Ir para o conteúdo principal</a>
       {data.shop.active&&tour<0&&!modal&&<HolidayPrompt items={holidays} identity={data.shop.id} day={shopDay} review={()=>T('notices')}/>}
+      {showWhatsappShortcutNotice&&(
+        <WhatsappShortcutPrompt
+          identity={`${data.shop.id}:${identity.id||'owner'}`}
+          day={shopDay}
+          done={whatsappShortcutDone}
+          blocked={tour>=0||Boolean(modal)||holidays.some(item=>item.days<=14)}
+          onOpenTutorial={()=>T('share')}
+          onMarkDone={markWhatsappShortcutDone}
+        />
+      )}
       {menu&&<div className="sidebar-backdrop" onClick={()=>MENU(false)} aria-hidden="true"/>}
 
       {/* Mobile Slide-Over Drawer */}
@@ -940,6 +972,7 @@ export default function Dashboard(){
                     </button>
                   </div>
                   {[
+                    ...(showWhatsappShortcutNotice?[{title:'Atalho rápido no WhatsApp',text:'Configure /agendamento ou @@agendar para enviar seu link em segundos',tab:'share',id:''}]:[]),
                     ...storedNotices.filter(n=>!n.readAt).map(n=>({title:n.title,text:n.body,tab:n.tab||'notices',id:n.id})),
                     ...notices.map(n=>({title:n.title,text:n.text,tab:n.tab,id:''})),
                   ].slice(0,3).map((n,i)=>(
@@ -950,7 +983,7 @@ export default function Dashboard(){
                       </div>
                     </div>
                   ))}
-                  {!notices.length&&!unreadStoredCount&&<p className="kr-sub">Nenhum aviso pendente no momento.</p>}
+                  {!notices.length&&!unreadStoredCount&&!showWhatsappShortcutNotice&&<p className="kr-sub">Nenhum aviso pendente no momento.</p>}
                 </section>
               </div>
             </>
@@ -958,7 +991,11 @@ export default function Dashboard(){
 
           {tab==='share'&&(isManager||identity.can_share_link)&&(
             <div className="kr-module">
-              <ShareGuide url={shareUrl}/>
+              <ShareGuide
+                url={shareUrl}
+                shortcutDone={whatsappShortcutDone}
+                onMarkShortcutDone={markWhatsappShortcutDone}
+              />
               {isTeam&&isManager&&(
                 <section className="card kr-list-card">
                   <h3>Links individuais por profissional</h3>
@@ -1376,6 +1413,11 @@ export default function Dashboard(){
                 getToken={getClerkToken}
                 onToast={showToast}
               />
+              <WhatsappShortcutCard
+                done={!showWhatsappShortcutNotice}
+                onOpenTutorial={()=>T('share')}
+                onMarkDone={markWhatsappShortcutDone}
+              />
 
               {storedNotices.length>0&&(
                 <div className="kr-notices-section">
@@ -1480,6 +1522,7 @@ export default function Dashboard(){
                 grid:Number(cfg.grid??15),
                 notice:Number(cfg.notice??10),
                 buffer:Number(cfg.buffer??10),
+                overtimeMinutes:Number(cfg.overtimeMinutes??0),
                 cancelMinutes:Number(cfg.cancelMinutes??120),
                 grace:Number(cfg.grace??5),
               }}
@@ -1497,6 +1540,9 @@ export default function Dashboard(){
               onOpenEditService={(svc)=>M({type:'service',item:svc})}
               onToggleService={async(svc)=>{await mutate('service',{id:svc.id,name:svc.name,price:svc.price,duration:svc.duration,active:!svc.active},false);}}
               onGoToEmployees={()=>T('team')}
+              showWhatsappShortcutAlert={showWhatsappShortcutNotice}
+              onOpenWhatsappTutorial={()=>T('share')}
+              onMarkWhatsappShortcutDone={markWhatsappShortcutDone}
               call={call}
             />
           )}
