@@ -464,9 +464,13 @@ export default function Booking({ params }: { params: Promise<{ slug: string }> 
                     <p className="summary-slot-pill">
                       <CalendarDays size={14} />
                       <span>
-                        {day.split('-').reverse().join('/')} · {slot.label} ·{' '}
-                        {slot.professionalName ||
-                          shop.professionals?.find((p: Row) => p.id === shop.professional)?.name}
+                        {day.split('-').reverse().join('/')} · {slot.label}
+                        {shop.professionals?.length > 1
+                          ? ` · ${
+                              slot.professionalName ||
+                              shop.professionals?.find((p: Row) => p.id === shop.professional)?.name
+                            }`
+                          : ''}
                       </span>
                     </p>
                     <label>

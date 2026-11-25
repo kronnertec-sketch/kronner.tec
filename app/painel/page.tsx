@@ -1,19 +1,22 @@
 'use client';
-import Management from '@/components/Management';
-import PointOfSale from '@/components/PointOfSale';
 import HolidayPrompt from '@/components/HolidayPrompt';
 import {pendingHolidays} from '@/lib/holidays';
-import Subscription from '@/components/Subscription';
-import RegisteredClients from '@/components/RegisteredClients';
 import ShareGuide from '@/components/share-guide';
 import {BrandLogo} from '@/components/BrandLogo';
-import {useEffect,useState} from 'react';
+import {KronnerEntrance} from '@/components/painel/KronnerEntrance';
+import {ClientsPanel} from '@/components/painel/ClientsPanel';
+import {FinancePanel} from '@/components/painel/FinancePanel';
+import {ReportsPanel} from '@/components/painel/ReportsPanel';
+import {EmployeesPanel} from '@/components/painel/EmployeesPanel';
+import {SettingsHub} from '@/components/painel/SettingsHub';
+import {ROLE_LABELS,type IdentityInfo,type ShopConfig,type ChargeRow} from '@/components/painel/types';
+import {useCallback,useEffect,useState} from 'react';
 import Link from 'next/link';
 import {
-  LayoutDashboard,CalendarDays,Users,Wallet,Package,Bell,Settings,LogOut,Plus,
+  LayoutDashboard,CalendarDays,Users,Wallet,Bell,Settings,LogOut,Plus,
   ArrowUpRight,Copy,ChevronRight,ChevronLeft,Check,Scissors,Menu,FileBarChart,
   Repeat,HelpCircle,User,Clock,Tag,Coffee,X,CheckCircle2,XCircle,MessageCircle,
-  RefreshCw,Trash2,Lock
+  RefreshCw,Trash2,Lock,UserCog
 } from 'lucide-react';
 import {useApi} from '@/lib/supabase';
 import {useAuth,useClerk} from '@clerk/react';
@@ -26,8 +29,8 @@ const tabs=[
   ['agenda','Agenda',CalendarDays],
   ['clients','Clientes',Users],
   ['monthly','Mensalistas',Repeat],
+  ['team','Funcionários',UserCog],
   ['finance','Financeiro',Wallet],
-  ['stock','Estoque',Package],
   ['reports','Relatórios',FileBarChart],
   ['notices','Avisos',Bell],
   ['share','Divulgue sua agenda',Copy],
@@ -40,11 +43,11 @@ const descriptions:Record<string,string>={
   share:'Seu link e orientações para facilitar o atendimento no WhatsApp.',
   overview:'Seu dia e os números que merecem atenção.',
   agenda:'Organize seus horários, encaixes e pausas.',
-  clients:'Clientes que entraram pelo link e criaram conta.',
+  clients:'Base geral da barbearia, pendências, atrasos e follow-up.',
   monthly:'Rotina fixa, relacionamento duradouro.',
-  finance:'Clareza sobre cada entrada e saída.',
-  stock:'Seus produtos, sem surpresas.',
-  reports:'Os números da sua barbearia, do seu jeito.',
+  team:'Profissionais, permissões, comissões individuais e folgas.',
+  finance:'Clareza sobre cada entrada, taxa e saída de serviços.',
+  reports:'Desempenho da barbearia e apuração individual de comissões.',
   notices:'O que precisa da sua atenção.',
   settings:'A Kronner funcionando do seu jeito.'
 };
@@ -79,11 +82,19 @@ function formatLongDayPt(dayStr:string){
 
 export default function Dashboard(){
   const [ownerChair,setOwnerChair]=useState('');
-  const [role,setRole]=useState('owner');
+  const [role,setRole]=useState<'owner'|'partner'|'employee'>('owner');
+  const [identity,setIdentity]=useState<IdentityInfo>({
+    role:'owner',shop:'',id:'',finance:true,commission_enabled:false,commission_bps:0,
+    can_manage_memberships:true,can_register_payment:true,can_share_link:true
+  });
+  const [waveReady,setWaveReady]=useState(false);
+  const [dashScope,setDashScope]=useState<string>('all');
+  const [settingsDirty,setSettingsDirty]=useState(false);
   const [onboarding,setOnboarding]=useState(false);
   const call=useApi();
   const {isLoaded,isSignedIn}=useAuth();
   const {signOut}=useClerk();
+  const handleEntranceDone=useCallback(()=>setWaveReady(true),[]);
   const [data,S]=useState<Workspace|null>(null),
     [tab,T]=useState('overview'),
     [loading,L]=useState(true),
@@ -110,11 +121,28 @@ export default function Dashboard(){
     try{
       if(!isSignedIn){location.assign('/entrar?next=/painel');return;}
       const membership=await call('team:identity');
-      setOwnerChair(membership.id);
-      setRole(membership.role||'owner');
-      if(membership.role && membership.role!=='owner' && !(membership.role==='partner'&&location.search==='?gestao=1') || !membership.role && membership.revoked){
+      if(!membership.role && membership.revoked){
         location.replace('/equipe');
         return;
+      }
+      const nextRole=(membership.role||'owner') as 'owner'|'partner'|'employee';
+      setOwnerChair(membership.id||'');
+      setRole(nextRole);
+      setIdentity({
+        role:nextRole,
+        shop:membership.shop||'',
+        id:membership.id||'',
+        name:membership.name||'',
+        finance:nextRole!=='employee'||!!membership.finance,
+        commission_enabled:!!membership.commission_enabled,
+        commission_bps:Number(membership.commission_bps||0),
+        can_manage_memberships:nextRole!=='employee'||!!membership.can_manage_memberships,
+        can_register_payment:nextRole!=='employee'||membership.can_register_payment!==false,
+        can_share_link:nextRole!=='employee'||membership.can_share_link!==false,
+        revoked:!!membership.revoked
+      });
+      if(nextRole==='employee'){
+        setDashScope(membership.id||'all');
       }
       const d=await call('workspace');
       if(d.onboarding){setOnboarding(true);return;}
@@ -122,6 +150,7 @@ export default function Dashboard(){
       S(d);
       C(settingsDraft({...defaults,...d.shop.cfg}));
       N(d.shop.name);
+      setSettingsDirty(false);
       ST(d.shop.cfg.setupStep||0);
       if(!d.shop.active){
         T('settings');
@@ -217,17 +246,9 @@ export default function Dashboard(){
     danger:true
   }));
 
-  if(data&&cfg.stock){
-    data.products.forEach(p=>{
-      if(p.quantity<=p.minimum)notices.push({title:p.quantity===0?'Produto esgotado':'Estoque baixo',text:`${p.name} · ${p.quantity} unidades`,tab:'stock',danger:p.quantity===0});
-      if(p.expires&&p.expires<=new Date(Date.now()+(cfg.expiryDays||30)*86400000).toISOString().slice(0,10))notices.push({title:p.expires<today()?'Validade vencida':'Validade próxima',text:p.name+' · '+p.expires,tab:'stock',danger:true});
-      if(p.quantity>0&&Date.now()-Date.parse(p.updated_at)>(cfg.stockDays||60)*86400000)notices.push({title:'Produto parado',text:p.name,tab:'stock'});
-    });
-  }
-
-  data?.clients.filter(c=>c.user_id).forEach(c=>{
+  data?.clients.forEach(c=>{
     const last=data.appointments.filter(a=>a.client===c.id&&a.status==='done').sort((a,b)=>b.starts.localeCompare(a.starts))[0];
-    if(last&&Date.now()-Date.parse(last.starts)>(cfg.returnDays||15)*86400000)notices.push({title:'Hora de convidar para voltar',text:c.name+' · último atendimento em '+localDay(last.starts).split('-').reverse().join('/'),tab:'clients'});
+    if(last&&Date.now()-Date.parse(last.starts)>(cfg.returnDays||30)*86400000)notices.push({title:'Cliente há +30 dias sem cortar',text:c.name+' · último atendimento em '+localDay(last.starts).split('-').reverse().join('/'),tab:'clients'});
   });
 
   data?.recurring.filter(r=>r.variable&&r.active).forEach(r=>notices.push({title:'Confira o valor deste mês',text:r.name+' · vencimento dia '+r.day,tab:'finance'}));
@@ -417,19 +438,38 @@ export default function Dashboard(){
   const dayReceived=total('in',data.payments.filter(p=>p.settles_on===date),true);
   const bufferMinutes=Number(cfg.buffer||10);
 
+  const isTeam=data.professionals.length>1;
+  const isManager=role==='owner'||role==='partner';
+  const canPay=isManager||identity.can_register_payment;
+  const canSeeFinance=isManager||identity.finance;
+  const visibleTabs=tabs.filter(([id])=>{
+    if(isManager)return true;
+    if(id==='monthly')return identity.can_manage_memberships;
+    if(id==='finance')return identity.finance;
+    if(id==='reports')return identity.commission_enabled;
+    if(id==='share')return identity.can_share_link;
+    return true;
+  });
+  const effectiveDashScope=!isTeam?'all':isManager?dashScope:identity.id;
+  const dashAppointments=effectiveDashScope==='all'?data.appointments:data.appointments.filter(a=>a.professional===effectiveDashScope);
+  const shareUrl=role==='employee'&&identity.id?`${url}?p=${identity.id}`:url;
+  const canEditSelectedApt=selectedApt&&(isManager||selectedApt.professional===identity.id);
+
   return (
-    <div className="app-shell">
+    <>
+      <KronnerEntrance onComplete={handleEntranceDone} hasError={!!error}/>
+      <div className={'app-shell '+(waveReady?'kr-wave-ready':'')}>
       {data.shop.active&&tour<0&&!modal&&<HolidayPrompt items={holidays} identity={data.shop.id} day={shopDay} review={()=>T('notices')}/>}
       {menu&&<div className="sidebar-backdrop" onClick={()=>MENU(false)} aria-hidden="true"/>}
       <aside className={'sidebar '+(menu?'open':'')}>
         <Link className="brand" href="/"><BrandLogo variant="light" height={30}/></Link>
         <div className="shop-label">
           <span className="avatar">{name.slice(0,1)}</span>
-          <div><strong>{name}</strong><small>Seu espaço de gestão</small></div>
+          <div><strong>{name}</strong><small>{ROLE_LABELS[role]}</small></div>
         </div>
         <span className="nav-label">SUA BARBEARIA</span>
         <nav>
-          {tabs.filter(t=>role==='owner'||!['settings','share'].includes(t[0])).filter(t=>t[0]!=='stock'||cfg.stock||!data.shop.active).map(([id,label,Icon])=>(
+          {visibleTabs.map(([id,label,Icon])=>(
             <button
               key={id}
               className={tab===id?'active':''}
@@ -480,35 +520,54 @@ export default function Dashboard(){
 
           {tab==='overview'&&(
             <>
+              {isTeam&&isManager&&(
+                <div className="kr-filter-bar" style={{marginBottom:14}}>
+                  <div className="kr-view-tabs" role="group" aria-label="Escopo da dashboard">
+                    <button type="button" className={'kr-pill-tab '+(dashScope==='all'?'active':'')} onClick={()=>setDashScope('all')}>Visão geral da barbearia</button>
+                    <button type="button" className={'kr-pill-tab '+(dashScope===identity.id?'active':'')} onClick={()=>setDashScope(identity.id)}>Minha dashboard</button>
+                  </div>
+                  <label className="kr-inline-select">
+                    <span>Profissional</span>
+                    <select value={dashScope} onChange={e=>setDashScope(e.target.value)}>
+                      <option value="all">Toda a barbearia</option>
+                      {data.professionals.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}
+                    </select>
+                  </label>
+                </div>
+              )}
               <div className="stats">
                 <article className="stat">
                   <span>Hoje na agenda <CalendarDays size={17}/></span>
-                  <strong>{data.appointments.filter(a=>localDay(a.starts)===today()&&a.status==='booked').length}</strong>
+                  <strong>{dashAppointments.filter(a=>localDay(a.starts)===today()&&a.status==='booked').length}</strong>
                   <small>atendimentos agendados</small>
                 </article>
-                <article className="stat">
-                  <span>Recebido hoje <Wallet size={17}/></span>
-                  <strong>{money(total('in',data.payments.filter(p=>p.settles_on===today()),true))}</strong>
-                  <small>líquido, sem aportes</small>
-                </article>
-                <article className="stat">
-                  <span>A receber <ArrowUpRight size={17}/></span>
-                  <strong>{money(pending.reduce((n,c)=>n+c.amount-paid(c.id),0))}</strong>
-                  <small>{pending.length} lançamentos em aberto</small>
-                </article>
+                {canSeeFinance&&(
+                  <article className="stat">
+                    <span>Recebido hoje <Wallet size={17}/></span>
+                    <strong>{money(total('in',data.payments.filter(p=>p.settles_on===today()),true))}</strong>
+                    <small>líquido, sem aportes</small>
+                  </article>
+                )}
+                {canSeeFinance&&(
+                  <article className="stat">
+                    <span>A receber <ArrowUpRight size={17}/></span>
+                    <strong>{money(pending.reduce((n,c)=>n+c.amount-paid(c.id),0))}</strong>
+                    <small>{pending.length} lançamentos em aberto</small>
+                  </article>
+                )}
                 <article className="stat blue">
-                  <span>Tempo bem cuidado <Scissors size={17}/></span>
-                  <strong>{data.appointments.filter(a=>a.status==='done').length}</strong>
-                  <small>atendimentos concluídos</small>
+                  <span>Serviços concluídos <Scissors size={17}/></span>
+                  <strong>{dashAppointments.filter(a=>a.status==='done').length}</strong>
+                  <small>{effectiveDashScope==='all'?'na barbearia':'no perfil selecionado'}</small>
                 </article>
               </div>
               <div className="dashboard-grid">
                 <section className="card">
                   <div className="split">
-                    <h2>Sua próxima cadeira</h2>
+                    <h2>Próximos horários</h2>
                     <button className="text-btn" onClick={()=>T('agenda')}>Ver agenda →</button>
                   </div>
-                  {data.appointments.filter(a=>a.status==='booked'&&a.starts>=new Date().toISOString()).slice(0,5).map(a=>(
+                  {dashAppointments.filter(a=>a.status==='booked'&&a.starts>=new Date().toISOString()).slice(0,5).map(a=>(
                     <div
                       role="button"
                       tabIndex={0}
@@ -520,33 +579,53 @@ export default function Dashboard(){
                       <b>{at(a.starts)}</b>
                       <span>
                         <strong>{client(a.client)}</strong>
-                        <small>{localDay(a.starts).split('-').reverse().join('/')} · {a.services.map((s:Row)=>s.name).join(' + ')}</small>
+                        <small>{localDay(a.starts).split('-').reverse().join('/')} · {a.services.map((s:Row)=>s.name).join(' + ')}{isTeam&&effectiveDashScope==='all'?' · '+(data.professionals.find(p=>p.id===a.professional)?.name||''):''}</small>
                       </span>
                       <span className="badge">Agendado</span>
                     </div>
                   ))}
-                  {!data.appointments.some(a=>a.status==='booked'&&a.starts>=new Date().toISOString())&&<Empty title="Agenda pronta para receber." text="Compartilhe seu link ou cadastre o primeiro atendimento."/>}
+                  {!dashAppointments.some(a=>a.status==='booked'&&a.starts>=new Date().toISOString())&&<Empty title="Agenda pronta para receber." text="Compartilhe seu link ou cadastre o primeiro atendimento."/>}
                 </section>
-                <section className="card">
-                  <span className="eyebrow">SEU LINK DE AGENDAMENTO</span>
-                  <h2>Menos mensagens.<br/>Mais horários marcados.</h2>
-                  <p>Seu cliente escolhe. A Kronner organiza.</p>
-                  <div className="link-box">{url}</div>
-                  <div className="actions">
-                    <button className="btn primary" onClick={()=>copy(url)}><Copy size={16}/> Copiar link</button>
-                    <a href={url} target="_blank" rel="noreferrer" className="btn">Abrir <ArrowUpRight size={15}/></a>
-                  </div>
-                </section>
-              </div>
-              <div className="notice danger">
-                <strong>Importante: prepare sua mensagem de agendamento.</strong>
-                <p>Aprenda a criar um atalho no celular e copie o texto com seu link.</p>
-                <button className="text-btn" onClick={()=>T('share')}>Configurar minha mensagem →</button>
+                {(isManager||identity.can_share_link)&&(
+                  <section className="card">
+                    <span className="eyebrow">{role==='employee'?'SEU LINK DIRETO':'SEU LINK DE AGENDAMENTO'}</span>
+                    <h2>Menos mensagens.<br/>Mais horários marcados.</h2>
+                    <p>Seu cliente escolhe. A Kronner organiza.</p>
+                    <div className="link-box">{shareUrl}</div>
+                    <div className="actions">
+                      <button className="btn primary" onClick={()=>copy(shareUrl)}><Copy size={16}/> Copiar link</button>
+                      <a href={shareUrl} target="_blank" rel="noreferrer" className="btn">Abrir <ArrowUpRight size={15}/></a>
+                    </div>
+                  </section>
+                )}
               </div>
             </>
           )}
 
-          {tab==='share'&&<ShareGuide url={url}/>}
+          {tab==='share'&&(isManager||identity.can_share_link)&&(
+            <div className="kr-module">
+              <ShareGuide url={shareUrl}/>
+              {isTeam&&isManager&&(
+                <section className="card kr-list-card">
+                  <h3>Links individuais por profissional</h3>
+                  <div className="kr-service-list">
+                    {data.professionals.map(p=>{
+                      const pUrl=`${url}?p=${p.id}`;
+                      return (
+                        <article className="kr-service-row" key={p.id}>
+                          <div>
+                            <strong>{p.name}</strong>
+                            <div className="kr-cell-sub mono">{pUrl}</div>
+                          </div>
+                          <button type="button" className="btn small" onClick={()=>copy(pUrl)}><Copy size={13}/> Copiar link</button>
+                        </article>
+                      );
+                    })}
+                  </div>
+                </section>
+              )}
+            </div>
+          )}
 
           {tab==='agenda'&&(
             <>
@@ -570,15 +649,16 @@ export default function Dashboard(){
 
               <div className="agenda-subbar">
                 <div className="actions" style={{margin:0}}>
-                  <label className="agenda-chair-filter" aria-label="Filtrar profissional">
-                    <User size={16}/>
-                    <select value={agendaChair} onChange={e=>setAgendaChair(e.target.value)}>
-                      <option value="all">{data.professionals.length>1?'Toda a equipe':(cfg.professional||data.shop.name)}</option>
-                      {data.professionals.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}
-                    </select>
-                  </label>
-                  <Link className="btn" href="/equipe">Agenda por cadeira</Link>
-                  <button type="button" className="btn" onClick={()=>M({type:'block'})}><Lock size={15}/> Bloquear período</button>
+                  {isTeam&&(
+                    <label className="agenda-chair-filter" aria-label="Filtrar profissional">
+                      <User size={16}/>
+                      <select value={agendaChair} onChange={e=>setAgendaChair(e.target.value)}>
+                        <option value="all">Toda a equipe</option>
+                        {data.professionals.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}
+                      </select>
+                    </label>
+                  )}
+                  {isManager&&<button type="button" className="btn" onClick={()=>M({type:'block'})}><Lock size={15}/> Bloquear período</button>}
                 </div>
                 <button type="button" className="btn primary" onClick={()=>openBooking()}><Plus size={17}/> Novo agendamento</button>
               </div>
@@ -735,7 +815,7 @@ export default function Dashboard(){
                       <button
                         type="button"
                         className={'agenda-status-btn'+(selectedApt.status==='done'?' active-done':'')}
-                        disabled={selectedApt.status!=='booked'||busy}
+                        disabled={!canEditSelectedApt||selectedApt.status!=='booked'||busy}
                         onClick={()=>M({type:'finish',item:selectedApt})}
                       >
                         <Check size={14}/> Concluído
@@ -743,7 +823,7 @@ export default function Dashboard(){
                       <button
                         type="button"
                         className={'agenda-status-btn'+(selectedApt.status==='absent'?' active-absent':'')}
-                        disabled={selectedApt.status!=='booked'||busy}
+                        disabled={!canEditSelectedApt||selectedApt.status!=='booked'||busy}
                         onClick={()=>{if(confirm('Registrar que o cliente não compareceu?'))mutate('cancel',{id:selectedApt.id,status:'absent'});}}
                       >
                         <X size={14}/> Não compareceu
@@ -751,14 +831,14 @@ export default function Dashboard(){
                       <button
                         type="button"
                         className={'agenda-status-btn'+(selectedApt.status==='cancelled'?' active-cancelled':'')}
-                        disabled={selectedApt.status!=='booked'||busy}
+                        disabled={!canEditSelectedApt||selectedApt.status!=='booked'||busy}
                         onClick={()=>{if(confirm('Cancelar este agendamento?'))mutate('cancel',{id:selectedApt.id});}}
                       >
                         <Trash2 size={14}/> Cancelado
                       </button>
                     </div>
 
-                    {selectedApt.status==='booked'&&(
+                    {canEditSelectedApt&&selectedApt.status==='booked'&&canPay&&(
                       <>
                         <span className="agenda-section-label">Pagamento rápido</span>
                         <label style={{marginBottom:10}}>
@@ -786,7 +866,7 @@ export default function Dashboard(){
                       </>
                     )}
 
-                    {selectedApt.status==='done'&&selectedAptCharge&&selectedAptPaid<selectedAptCharge.amount&&(
+                    {canEditSelectedApt&&selectedApt.status==='done'&&canPay&&selectedAptCharge&&selectedAptPaid<selectedAptCharge.amount&&(
                       <button
                         type="button"
                         className="btn primary"
@@ -797,12 +877,15 @@ export default function Dashboard(){
                       </button>
                     )}
 
-                    {selectedApt.status==='booked'&&(
+                    {canEditSelectedApt&&selectedApt.status==='booked'&&(
                       <div className="agenda-QuickActions">
                         <button type="button" className="btn small" onClick={()=>M({type:'finish',item:selectedApt})}>Finalizar</button>
-                        <button type="button" className="btn small" onClick={()=>{if(confirm('O cliente concordou com a remarcação?'))openBooking(selectedApt);}}><RefreshCw size={13}/> Remarcar</button>
+                        <button type="button" className="btn small" onClick={()=>{if(confirm('Remarcar ou transferir este atendimento?'))openBooking(selectedApt);}}><RefreshCw size={13}/> Remarcar / Transferir</button>
                         <button type="button" className="btn small danger-outline" onClick={()=>{if(confirm('Cancelar este agendamento?'))mutate('cancel',{id:selectedApt.id});}}>Cancelar</button>
                       </div>
+                    )}
+                    {!canEditSelectedApt&&selectedApt.status==='booked'&&(
+                      <p className="kr-sub" style={{marginTop:10}}>Visualização somente leitura — atendimento pertencente a outro profissional.</p>
                     )}
                   </aside>
                 )}
@@ -822,7 +905,28 @@ export default function Dashboard(){
             </>
           )}
 
-          {tab==='clients'&&<RegisteredClients data={data} day={shopDay}/>}
+          {tab==='clients'&&(
+            <ClientsPanel
+              clients={data.clients as any}
+              appointments={data.appointments as any}
+              charges={data.charges as any}
+              payments={data.payments as any}
+              memberships={data.memberships as any}
+              professionals={data.professionals as any}
+              cfg={data.shop.cfg as unknown as ShopConfig}
+              identity={identity}
+              onNewClient={()=>M({type:'client'})}
+              onReceiveCharge={(ch:ChargeRow)=>M({type:'pay',item:ch})}
+            />
+          )}
+
+          {tab==='team'&&(
+            <EmployeesPanel
+              identity={identity}
+              call={call}
+              onTeamChanged={load}
+            />
+          )}
 
           {tab==='monthly'&&(
             <>
@@ -853,128 +957,34 @@ export default function Dashboard(){
             </>
           )}
 
-          {tab==='reports'&&<Management data={data} role={role} refresh={load}/>}
-          {tab==='finance'&&<PointOfSale data={data} role={role} refresh={load}/>}
-          {tab==='finance'&&(
-            <>
-              <div className="toolbar">
-                <div className="actions">
-                  <button className="btn primary" onClick={()=>M({type:'charge'})}>Novo lançamento</button>
-                  <button className="btn" onClick={()=>M({type:'recurring'})}>Despesa recorrente</button>
-                  <button className="btn" onClick={()=>mutate('generate_expenses',{month:today()})}>Gerar despesas do mês</button>
-                </div>
-              </div>
-              <div className="stats">
-                <article className="stat">
-                  <span>Entradas liquidadas</span>
-                  <strong>{money(total('in',data.payments.filter(p=>p.settles_on<=today())))}</strong>
-                  <small>Inclui aportes; veja categorias abaixo</small>
-                </article>
-                <article className="stat">
-                  <span>Saídas liquidadas</span>
-                  <strong>{money(total('out',data.payments.filter(p=>p.settles_on<=today())))}</strong>
-                </article>
-                <article className="stat">
-                  <span>Saldo registrado</span>
-                  <strong>{money(total('in',data.payments.filter(p=>p.settles_on<=today()))-total('out',data.payments.filter(p=>p.settles_on<=today())))}</strong>
-                  <small>Considera apenas lançamentos do sistema</small>
-                </article>
-              </div>
-              <div className="card table-wrap">
-                <h2>Entradas, saídas e valores pendentes</h2>
-                <table>
-                  <thead><tr><th>Data</th><th>Descrição</th><th>Tipo</th><th>Valor</th><th>Saldo</th><th>Situação</th><th/></tr></thead>
-                  <tbody>
-                    {[...data.charges].sort((a,b)=>b.due.localeCompare(a.due)).map(c=>(
-                      <tr key={c.id}>
-                        <td>{c.due.split('-').reverse().join('/')}</td>
-                        <td>
-                          <strong>{c.description}</strong>
-                          <small>{c.client?client(c.client):({injection:'Aporte do proprietário',withdrawal:'Retirada',stock_purchase:'Compra de estoque',sale:'Venda de produto',expense:'Despesa'} as Row)[c.category]||'Outros'}</small>
-                        </td>
-                        <td>{c.direction==='in'?'Entrada':'Saída'}</td>
-                        <td>{money(c.amount)}</td>
-                        <td>{money(c.amount-paid(c.id))}</td>
-                        <td><span className={'badge '+(debtStatus(c.amount,paid(c.id),c.due,cfg.grace)==='Atrasado'?'red':'')}>{debtStatus(c.amount,paid(c.id),c.due,cfg.grace)}</span></td>
-                        <td>{paid(c.id)<c.amount&&<button className="btn small" onClick={()=>M({type:'pay',item:c})}>{c.direction==='in'?'Receber':'Pagar'}</button>}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                {!data.charges.length&&<Empty title="Cada movimento conta." text="Finalize atendimentos ou registre entradas e despesas para acompanhar seu caixa."/>}
-              </div>
-            </>
+          {tab==='finance'&&canSeeFinance&&(
+            <FinancePanel
+              charges={data.charges as any}
+              payments={data.payments as any}
+              appointments={data.appointments as any}
+              memberships={data.memberships as any}
+              clients={data.clients as any}
+              professionals={data.professionals as any}
+              cfg={data.shop.cfg as unknown as ShopConfig}
+              identity={identity}
+              isTeam={isTeam}
+              onNewCharge={()=>M({type:'charge'})}
+              onGenerateExpenses={()=>mutate('generate_expenses',{month:today()})}
+              onReceiveCharge={(ch:ChargeRow)=>M({type:'pay',item:ch})}
+            />
           )}
 
-          {tab==='stock'&&(
-            <>
-              <div className="toolbar">
-                <p>Cadastro manual. Sem código de barras.</p>
-                <button className="btn primary" onClick={()=>M({type:'product'})}>Cadastrar produto</button>
-              </div>
-              <div className="product-grid">
-                {data.products.map(p=>(
-                  <article className="card product" key={p.id}>
-                    <div className="split">
-                      <span className="product-icon"><Package/></span>
-                      <span className={'badge '+(p.quantity<=p.minimum?'red':'green')}>{p.quantity===0?'Esgotado':p.quantity<=p.minimum?'Estoque baixo':'Em estoque'}</span>
-                    </div>
-                    <h2>{p.name}</h2>
-                    <p><strong>{p.quantity}</strong> unidades · mínimo {p.minimum}</p>
-                    <div className="line"><span>Custo / venda</span><b>{money(p.cost)} / {money(p.price)}</b></div>
-                    {p.expires&&<small>Validade {p.expires.split('-').reverse().join('/')}</small>}
-                    <button className="btn" onClick={()=>M({type:'stock',item:p})}>Registrar movimento</button>
-                  </article>
-                ))}
-              </div>
-              {!data.products.length&&<div className="card"><Empty title="Tudo pronto para o primeiro produto." text="Cadastre o produto, depois registre a compra para dar entrada no estoque e no financeiro."/></div>}
-            </>
-          )}
-
-          {tab==='reports'&&(
-            <>
-              <div className="toolbar">
-                <div className="actions">
-                  <label>De<input type="date" value={from} onChange={e=>F(e.target.value)}/></label>
-                  <label>Até<input type="date" value={to} onChange={e=>TT(e.target.value)}/></label>
-                </div>
-                <button className="btn primary" onClick={()=>window.print()}>Imprimir / salvar PDF</button>
-              </div>
-              <section className="card report">
-                <div className="split"><h2>{name} · Relatório financeiro</h2><span>{from.split('-').reverse().join('/')} a {to.split('-').reverse().join('/')}</span></div>
-                <p>Caixa pela data de liquidação. Faturamento pela data do lançamento/atendimento. Valores gerenciais, sem cálculo de impostos.</p>
-                <div className="stats">
-                  <article className="stat"><span>Receitas liquidadas</span><strong>{money(total('in',reportPayments,true))}</strong></article>
-                  <article className="stat"><span>Saídas liquidadas</span><strong>{money(total('out',reportPayments))}</strong></article>
-                  <article className="stat"><span>Taxas de recebimento</span><strong>{money(reportPayments.reduce((n,p)=>n+p.fee,0))}</strong></article>
-                </div>
-                <div className="line"><span>Faturamento registrado no período (sem aportes)</span><strong>{money(allDue.filter(c=>c.direction==='in'&&c.category!=='injection').reduce((n,c)=>n+c.amount,0))}</strong></div>
-                <div className="line"><span>Aportes liquidados no período</span><strong>{money(reportPayments.filter(p=>data.charges.find(c=>c.id===p.charge)?.category==='injection').reduce((n,p)=>n+p.amount,0))}</strong></div>
-                <div className="line"><span>Variação do caixa, incluindo aportes e retiradas</span><strong>{money(total('in',reportPayments)-total('out',reportPayments))}</strong></div>
-                <h3>Movimentos liquidados</h3>
-                <div className="table-wrap">
-                  <table>
-                    <thead><tr><th>Data</th><th>Descrição</th><th>Bruto</th><th>Taxa</th><th>Líquido</th></tr></thead>
-                    <tbody>
-                      {[...reportPayments].sort((a,b)=>a.settles_on.localeCompare(b.settles_on)).map(p=>{
-                        const c=data.charges.find(c=>c.id===p.charge);
-                        return <tr key={p.id}><td>{p.settles_on}</td><td>{c?.direction==='out'?'− ':''}{c?.description}</td><td>{money(p.amount)}</td><td>{money(p.fee)}</td><td>{money(p.amount-p.fee)}</td></tr>;
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-                {cfg.stock&&(
-                  <>
-                    <h3>Produtos no período</h3>
-                    {data.products.map(p=>{
-                      const moves=data.movements.filter(m=>m.product===p.id&&localDay(m.created_at)>=from&&localDay(m.created_at)<=to);
-                      return <div className="line" key={p.id}><span>{p.name}</span><span>{moves.filter(m=>m.kind==='purchase').reduce((n,m)=>n+m.quantity,0)} entradas · {moves.filter(m=>m.kind==='sale').reduce((n,m)=>n+m.quantity,0)} vendas · estoque atual {p.quantity}</span></div>;
-                    })}
-                    <small>Compras já constam nas saídas do caixa. O custo dos produtos vendidos não é descontado novamente deste saldo.</small>
-                  </>
-                )}
-              </section>
-            </>
+          {tab==='reports'&&(isManager||identity.commission_enabled)&&(
+            <ReportsPanel
+              appointments={data.appointments as any}
+              charges={data.charges as any}
+              payments={data.payments as any}
+              professionals={data.professionals as any}
+              cfg={data.shop.cfg as unknown as ShopConfig}
+              identity={identity}
+              isTeam={isTeam}
+              call={call}
+            />
           )}
 
           {tab==='notices'&&(
@@ -1015,10 +1025,40 @@ export default function Dashboard(){
             </>
           )}
 
-          {tab==='settings'&&(
+          {tab==='settings'&&data.shop.active&&(
+            <SettingsHub
+              shop={data.shop as any}
+              cfg={{
+                ...(data.shop.cfg as unknown as ShopConfig),
+                ...cfg,
+                creditFee:typeof cfg.creditFee==='number'?cfg.creditFee:Math.round((Number(String(cfg.creditFee||'0').replace(',','.'))||0)*100),
+                debitFee:typeof cfg.debitFee==='number'?cfg.debitFee:Math.round((Number(String(cfg.debitFee||'0').replace(',','.'))||0)*100),
+                maxDays:Number(cfg.maxDays||21),
+                grid:Number(cfg.grid||15),
+                notice:Number(cfg.notice||10),
+                cancelMinutes:Number(cfg.cancelMinutes||120),
+                grace:Number(cfg.grace||5),
+              }}
+              setCfg={(next)=>{C({...next,creditFee:(next.creditFee/100).toString(),debitFee:(next.debitFee/100).toString()});setSettingsDirty(true);}}
+              shopName={name}
+              setShopName={(v)=>{N(v);setSettingsDirty(true);}}
+              services={data.services as any}
+              professionals={data.professionals as any}
+              identity={identity}
+              dirty={settingsDirty}
+              saving={busy}
+              onSaveSettings={async()=>{await saveSettings(false,step);setSettingsDirty(false);}}
+              onLookupCep={lookupCep}
+              onOpenNewService={()=>M({type:'service'})}
+              onOpenEditService={(svc)=>M({type:'service',item:svc})}
+              onToggleService={async(svc)=>{await mutate('service',{id:svc.id,name:svc.name,price:svc.price,duration:svc.duration,active:!svc.active},false);}}
+              onGoToEmployees={()=>T('team')}
+              call={call}
+            />
+          )}
+
+          {tab==='settings'&&!data.shop.active&&(
             <>
-              <Link className="btn" href="/equipe">Equipe e cadeiras</Link>
-              <Subscription/>
               <div className="setup-progress">
                 {['Identificação','Expediente','Serviços','Financeiro','Opcionais','Revisão'].map((x,i)=>(
                   <button key={x} className={step===i?'active':''} disabled={!data.shop.active&&i>step} onClick={()=>ST(i)}>
@@ -1135,14 +1175,10 @@ export default function Dashboard(){
 
                 {step===4&&(
                   <>
-                    <label className="checkbox"><input type="checkbox" checked={cfg.stock} onChange={e=>C({...cfg,stock:e.target.checked})}/>Vendo produtos e quero controlar o estoque</label>
-                    <p>Se não vende produtos, nenhum cadastro ou pendência de estoque será exigido.</p>
                     <div className="form-grid">
-                      {[['returnDays','Avisar após dias sem atendimento'],...(cfg.stock?[['stockDays','Avisar produto parado após dias'],['expiryDays','Avisar validade com antecedência de dias']]:[])].map(([k,label])=>(
-                        <label key={k}>{label}<input type="number" min="1" value={cfg[k]} onChange={e=>C({...cfg,[k]:e.target.value})}/></label>
-                      ))}
+                      <label>Avisar cliente após dias sem atendimento<input type="number" min="1" value={cfg.returnDays||30} onChange={e=>C({...cfg,returnDays:e.target.value})}/></label>
                     </div>
-                    <p>Mensalistas e despesas recorrentes podem ser cadastrados depois, nas próprias abas.</p>
+                    <p>Mensalistas, equipe e despesas recorrentes podem ser configurados depois, nas próprias abas.</p>
                   </>
                 )}
 
@@ -1187,12 +1223,12 @@ export default function Dashboard(){
           </nav>
         </footer>
         <nav className="mobile-bottom-nav" aria-label="Navegação rápida">
-            {[
+            {([
               ['overview','Início',LayoutDashboard],
               ['agenda','Agenda',CalendarDays],
               ['clients','Clientes',Users],
-              ['finance','Financeiro',Wallet]
-            ].map(([id,lbl,Icon]:any)=>(
+              ...(canSeeFinance?[['finance','Financeiro',Wallet]]:[['team','Equipe',UserCog]])
+            ] as any[]).map(([id,lbl,Icon])=>(
               <button
                 key={id}
                 type="button"
@@ -1297,7 +1333,7 @@ export default function Dashboard(){
                   <Field label="Descrição" name="description"/>
                   <div className="form-grid">
                     <Select label="Movimento" name="direction" options={[["out","Saída"],["in","Entrada"]]}/>
-                    <Select label="Categoria" name="category" options={[["expense","Despesa"],["injection","Aporte do dono"],["withdrawal","Retirada"],["sale","Venda avulsa"],["other","Outro"]]}/>
+                    <Select label="Categoria" name="category" options={[["expense","Despesa"],["injection","Aporte do dono"],["withdrawal","Retirada"],["other","Outro"]]}/>
                     <Field label="Valor (R$)" name="amount" type="number" min="0.01" step="0.01"/>
                     <Field label="Data / vencimento" name="due" type="date" value={today()}/>
                   </div>
@@ -1433,5 +1469,6 @@ export default function Dashboard(){
         </div>
       )}
     </div>
+    </>
   );
 }

@@ -22,14 +22,12 @@ export default function Team(){
    const identity=await api('team:identity');
    setSelf(identity.id);setAccess(identity.role||(identity.revoked?'revoked':'none'));
    if(identity.role){
-     setPendingInvites([]);
-     const [team,agenda]=await Promise.all([api('team:list'),api('team:agenda',{day})]);
-     setMembers(team);setAppointments(agenda);
-   }else{
-     const pending=await api('team:pending_invites').catch(()=>[]);
-     setPendingInvites(Array.isArray(pending)?pending:[]);
+     location.replace('/painel');
+     return;
    }
- },[api,day]);
+   const pending=await api('team:pending_invites').catch(()=>[]);
+   setPendingInvites(Array.isArray(pending)?pending:[]);
+ },[api]);
  useEffect(()=>{
    if(!isLoaded)return;
    const token=location.hash.slice(1);
