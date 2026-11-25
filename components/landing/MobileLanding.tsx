@@ -69,6 +69,7 @@ export function MobileLanding() {
   const [activeFeature, setActiveFeature] = useState<DemoFeatureId>('agenda');
   const [showStickyCta, setShowStickyCta] = useState(false);
   const [statementProgress, setStatementProgress] = useState(0);
+  const [scrollProgress, setScrollProgress] = useState(0);
   const heroCtaRef = useRef<HTMLDivElement | null>(null);
   const statementRef = useRef<HTMLElement | null>(null);
   const revealRefs = useRef<Array<HTMLElement | null>>([]);
@@ -96,6 +97,9 @@ export function MobileLanding() {
     if (heroCtaRef.current) ctaObserver.observe(heroCtaRef.current);
 
     const onScroll = () => {
+      const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+      setScrollProgress(docHeight > 0 ? Math.max(0, Math.min(1, window.scrollY / docHeight)) : 0);
+
       const el = statementRef.current;
       if (!el) return;
       const rect = el.getBoundingClientRect();
@@ -117,6 +121,11 @@ export function MobileLanding() {
 
   return (
     <div className="kl2-mobile">
+      <div
+        className="kl2-scroll-progress"
+        style={{ transform: `scaleX(${scrollProgress})` }}
+        aria-hidden="true"
+      />
       <header className="kl2-mob-header">
         <Link href="/" className="kl2-nav-brand" aria-label="Kronner">
           <BrandLogo variant="dark" height={24} />

@@ -6869,38 +6869,84 @@ textarea {
   gap: 16px;
 }
 
-/* Wave Reveal on New Floating Shell */
-.kr-shell.kr-wave-ready {
-  animation: krShellRipple 600ms var(--ease-out-kr) both;
+/* Opening Choreography on Floating Shell (plays visibly as splash dissolves) */
+@keyframes krPanelTopIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.99);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes krPanelCardIn {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.985);
+    filter: blur(3px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+
+@keyframes krPanelBarGrow {
+  from {
+    opacity: 0.35;
+    transform: scaleY(0.16);
+  }
+  to {
+    opacity: 1;
+    transform: scaleY(1);
+  }
+}
+
+@keyframes krPanelGentleFade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 .kr-shell.kr-wave-ready .kr-topnav {
-  animation: krWavePop 360ms var(--ease-out-kr) 40ms both;
+  animation: krPanelTopIn 380ms cubic-bezier(0.23, 1, 0.32, 1) 0ms both;
 }
 
 .kr-shell.kr-wave-ready .kr-rail-btn {
-  animation: krWavePop 360ms var(--ease-out-kr) both;
+  animation: krPanelCardIn 340ms cubic-bezier(0.23, 1, 0.32, 1) both;
 }
 
-.kr-shell.kr-wave-ready .kr-rail-group:nth-child(1) .kr-rail-btn:nth-child(1) { animation-delay: 80ms; }
-.kr-shell.kr-wave-ready .kr-rail-group:nth-child(1) .kr-rail-btn:nth-child(2) { animation-delay: 120ms; }
-.kr-shell.kr-wave-ready .kr-rail-group:nth-child(1) .kr-rail-btn:nth-child(3) { animation-delay: 160ms; }
-.kr-shell.kr-wave-ready .kr-rail-group:nth-child(1) .kr-rail-btn:nth-child(4) { animation-delay: 200ms; }
-.kr-shell.kr-wave-ready .kr-rail-group:nth-child(2) .kr-rail-btn:nth-child(1) { animation-delay: 240ms; }
-.kr-shell.kr-wave-ready .kr-rail-group:nth-child(2) .kr-rail-btn:nth-child(2) { animation-delay: 280ms; }
-.kr-shell.kr-wave-ready .kr-rail-group:nth-child(2) .kr-rail-btn:nth-child(3) { animation-delay: 320ms; }
-.kr-shell.kr-wave-ready .kr-rail-group:nth-child(2) .kr-rail-btn:nth-child(4) { animation-delay: 360ms; }
-.kr-shell.kr-wave-ready .kr-rail-group:nth-child(3) .kr-rail-btn:nth-child(1) { animation-delay: 400ms; }
-.kr-shell.kr-wave-ready .kr-rail-group:nth-child(3) .kr-rail-btn:nth-child(2) { animation-delay: 440ms; }
+.kr-shell.kr-wave-ready .kr-rail-group:nth-child(1) .kr-rail-btn:nth-child(1) { animation-delay: 50ms; }
+.kr-shell.kr-wave-ready .kr-rail-group:nth-child(1) .kr-rail-btn:nth-child(2) { animation-delay: 85ms; }
+.kr-shell.kr-wave-ready .kr-rail-group:nth-child(1) .kr-rail-btn:nth-child(3) { animation-delay: 120ms; }
+.kr-shell.kr-wave-ready .kr-rail-group:nth-child(1) .kr-rail-btn:nth-child(4) { animation-delay: 155ms; }
+.kr-shell.kr-wave-ready .kr-rail-group:nth-child(2) .kr-rail-btn:nth-child(1) { animation-delay: 190ms; }
+.kr-shell.kr-wave-ready .kr-rail-group:nth-child(2) .kr-rail-btn:nth-child(2) { animation-delay: 225ms; }
+.kr-shell.kr-wave-ready .kr-rail-group:nth-child(2) .kr-rail-btn:nth-child(3) { animation-delay: 260ms; }
+.kr-shell.kr-wave-ready .kr-rail-group:nth-child(2) .kr-rail-btn:nth-child(4) { animation-delay: 295ms; }
+.kr-shell.kr-wave-ready .kr-rail-group:nth-child(3) .kr-rail-btn:nth-child(1) { animation-delay: 330ms; }
+.kr-shell.kr-wave-ready .kr-rail-group:nth-child(3) .kr-rail-btn:nth-child(2) { animation-delay: 365ms; }
 
 .kr-shell.kr-wave-ready .kr-greeting-row {
-  animation: krWavePop 380ms var(--ease-out-kr) 140ms both;
+  animation: krPanelCardIn 400ms cubic-bezier(0.23, 1, 0.32, 1) 100ms both;
 }
 
-.kr-shell.kr-wave-ready .kr-bento > *:nth-child(1) { animation: krWavePop 420ms var(--ease-out-kr) 200ms both; }
-.kr-shell.kr-wave-ready .kr-bento > *:nth-child(2) { animation: krWavePop 420ms var(--ease-out-kr) 280ms both; }
-.kr-shell.kr-wave-ready .kr-bento > *:nth-child(3) { animation: krWavePop 420ms var(--ease-out-kr) 360ms both; }
-.kr-shell.kr-wave-ready .kr-bento-wide > * { animation: krWavePop 440ms var(--ease-out-kr) 420ms both; }
+.kr-shell.kr-wave-ready .kr-bento > *:nth-child(1) { animation: krPanelCardIn 440ms cubic-bezier(0.23, 1, 0.32, 1) 160ms both; }
+.kr-shell.kr-wave-ready .kr-bento > *:nth-child(2) { animation: krPanelCardIn 440ms cubic-bezier(0.23, 1, 0.32, 1) 230ms both; }
+.kr-shell.kr-wave-ready .kr-bento > *:nth-child(3) { animation: krPanelCardIn 440ms cubic-bezier(0.23, 1, 0.32, 1) 300ms both; }
+.kr-shell.kr-wave-ready .kr-bento-wide > *:nth-child(1) { animation: krPanelCardIn 460ms cubic-bezier(0.23, 1, 0.32, 1) 360ms both; }
+.kr-shell.kr-wave-ready .kr-bento-wide > *:nth-child(2) { animation: krPanelCardIn 460ms cubic-bezier(0.23, 1, 0.32, 1) 420ms both; }
+
+.kr-shell.kr-wave-ready .kr-bar-fill {
+  transform-origin: bottom center;
+  animation: krPanelBarGrow 520ms cubic-bezier(0.23, 1, 0.32, 1) 320ms both;
+}
 
 /* Mobile Slide Drawer for Floating Shell */
 .kr-mobile-drawer {
@@ -7005,13 +7051,15 @@ textarea {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .kr-intro,
-  .kr-intro *,
-  .kr-shell.kr-wave-ready,
-  .kr-shell.kr-wave-ready * {
-    animation: none !important;
-    transition: none !important;
-    clip-path: none !important;
+  .kr-shell.kr-wave-ready .kr-topnav,
+  .kr-shell.kr-wave-ready .kr-rail-btn,
+  .kr-shell.kr-wave-ready .kr-greeting-row,
+  .kr-shell.kr-wave-ready .kr-bento > *,
+  .kr-shell.kr-wave-ready .kr-bento-wide > *,
+  .kr-shell.kr-wave-ready .kr-bar-fill {
+    animation-name: krPanelGentleFade;
+    animation-duration: 280ms;
+    filter: none;
   }
 }
 
@@ -8673,5 +8721,89 @@ textarea {
   .kl2-reveal .kl2-stagger {
     transform: none;
     transition: opacity 340ms ease-out;
+  }
+}
+
+
+/* --- Additional Landing Page Motion Polish (Scroll Hairline, Live Dot, Row Cascades) --- */
+.kl2-scroll-progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2.5px;
+  z-index: 60;
+  background: linear-gradient(90deg, var(--kl2-emerald) 0%, var(--kl2-brass-light) 100%);
+  transform-origin: left center;
+  pointer-events: none;
+}
+
+.kl2-nav {
+  transition: box-shadow 220ms ease, border-color 220ms ease;
+}
+
+.kl2-nav.is-scrolled {
+  border-color: rgba(16, 22, 24, 0.14);
+  box-shadow: 0 16px 36px -20px rgba(16, 22, 24, 0.28);
+}
+
+@keyframes kl2LivePulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.45;
+    transform: scale(0.76);
+  }
+}
+
+.kl2-live-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: #8ff0cb;
+  margin-right: 4px;
+  vertical-align: middle;
+  animation: kl2LivePulse 2.2s ease-in-out infinite;
+}
+
+@keyframes kl2RowSlide {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.kl2-queue-enter,
+.kl2-row-enter {
+  animation: kl2RowSlide 340ms var(--kl2-ease-out) both;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .kl2-pricing-card {
+    transition:
+      opacity 460ms var(--kl2-ease-out),
+      transform 220ms var(--kl2-ease-out),
+      box-shadow 220ms ease;
+  }
+  .kl2-pricing-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 30px 68px -36px rgba(16, 22, 24, 0.3);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kl2-live-dot {
+    animation: none;
+  }
+  .kl2-queue-enter,
+  .kl2-row-enter {
+    animation: kl2GentleFade 260ms ease-out both;
   }
 }

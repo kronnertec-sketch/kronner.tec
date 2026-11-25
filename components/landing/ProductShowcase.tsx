@@ -150,7 +150,7 @@ export function HeroDashboardPreview() {
                 <span className="kl2-app-pill-tag">3 cadeiras</span>
               </div>
               <div className="kl2-app-queue-list">
-                <div className="kl2-app-queue-row">
+                <div className="kl2-app-queue-row kl2-queue-enter" style={{ animationDelay: '460ms' }}>
                   <span className="kl2-app-time">14:00</span>
                   <div>
                     <b>Lucas Almeida</b>
@@ -158,15 +158,17 @@ export function HeroDashboardPreview() {
                   </div>
                   <span className="kl2-app-status is-done">Concluído</span>
                 </div>
-                <div className="kl2-app-queue-row is-now">
+                <div className="kl2-app-queue-row is-now kl2-queue-enter" style={{ animationDelay: '540ms' }}>
                   <span className="kl2-app-time">14:50</span>
                   <div>
                     <b>Matheus Costa</b>
                     <small>Corte social · Rafael</small>
                   </div>
-                  <span className="kl2-app-status is-active">Na cadeira</span>
+                  <span className="kl2-app-status is-active">
+                    <i className="kl2-live-dot" aria-hidden="true" /> Na cadeira
+                  </span>
                 </div>
-                <div className="kl2-app-queue-row">
+                <div className="kl2-app-queue-row kl2-queue-enter" style={{ animationDelay: '620ms' }}>
                   <span className="kl2-app-time">15:30</span>
                   <div>
                     <b>Pedro Henrique</b>
@@ -223,15 +225,17 @@ export function MobileHeroDashboardPreview() {
       </div>
 
       <div className="kl2-app-queue-list is-compact">
-        <div className="kl2-app-queue-row is-now">
+        <div className="kl2-app-queue-row is-now kl2-queue-enter" style={{ animationDelay: '420ms' }}>
           <span className="kl2-app-time">14:50</span>
           <div>
             <b>Matheus Costa</b>
             <small>Corte degradê · Rafael</small>
           </div>
-          <span className="kl2-app-status is-active">Agora</span>
+          <span className="kl2-app-status is-active">
+            <i className="kl2-live-dot" aria-hidden="true" /> Agora
+          </span>
         </div>
-        <div className="kl2-app-queue-row">
+        <div className="kl2-app-queue-row kl2-queue-enter" style={{ animationDelay: '500ms' }}>
           <span className="kl2-app-time">15:30</span>
           <div>
             <b>Pedro Henrique</b>
@@ -313,10 +317,14 @@ export function InteractiveFeatureDemo({ feature }: { feature: DemoFeatureId }) 
         </div>
 
         <div className="kl2-demo-list">
-          {visible.map(item => {
+          {visible.map((item, idx) => {
             const isDone = doneIds.includes(item.id);
             return (
-              <div key={item.id} className={`kl2-demo-row ${isDone ? 'is-done' : ''}`}>
+              <div
+                key={`${chair}-${item.id}`}
+                className={`kl2-demo-row kl2-row-enter ${isDone ? 'is-done' : ''}`}
+                style={{ animationDelay: `${idx * 45}ms` }}
+              >
                 <span className="kl2-app-time">{item.time}</span>
                 <div className="kl2-demo-row-main">
                   <b>{item.client}</b>

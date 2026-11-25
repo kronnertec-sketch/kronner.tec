@@ -70,6 +70,8 @@ const STATEMENT_WORDS: Array<{ text: string; tone?: 'brass' }> = [
 export function DesktopLanding() {
   const [activeFeature, setActiveFeature] = useState<DemoFeatureId>('agenda');
   const [statementProgress, setStatementProgress] = useState(0);
+  const [scrollProgress, setScrollProgress] = useState(0);
+  const [navScrolled, setNavScrolled] = useState(false);
   const statementRef = useRef<HTMLElement | null>(null);
   const revealRefs = useRef<Array<HTMLElement | null>>([]);
 
@@ -91,6 +93,11 @@ export function DesktopLanding() {
     });
 
     const onScroll = () => {
+      const scrollY = window.scrollY;
+      setNavScrolled(scrollY > 24);
+      const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+      setScrollProgress(docHeight > 0 ? Math.max(0, Math.min(1, scrollY / docHeight)) : 0);
+
       const el = statementRef.current;
       if (!el) return;
       const rect = el.getBoundingClientRect();
@@ -109,12 +116,17 @@ export function DesktopLanding() {
 
   return (
     <div className="kl2-desktop">
+      <div
+        className="kl2-scroll-progress"
+        style={{ transform: `scaleX(${scrollProgress})` }}
+        aria-hidden="true"
+      />
       <a className="kl-skip" href="#conteudo-desktop">
         Ir para o conteúdo principal
       </a>
 
       <header className="kl2-nav-wrap">
-        <div className="kl2-wrap kl2-nav">
+        <div className={`kl2-wrap kl2-nav ${navScrolled ? 'is-scrolled' : ''}`}>
           <Link href="/" className="kl2-nav-brand" aria-label="Kronner">
             <BrandLogo variant="dark" height={28} />
           </Link>
@@ -254,19 +266,19 @@ export function DesktopLanding() {
                 pelas configurações com valor proporcional.
               </p>
               <ul className="kl2-trust-list">
-                <li>
+                <li className="kl2-stagger" style={{ transitionDelay: '60ms' }}>
                   <Clock size={16} /> Configuração guiada em poucos minutos
                 </li>
-                <li>
+                <li className="kl2-stagger" style={{ transitionDelay: '120ms' }}>
                   <ShieldCheck size={16} /> Acesso individual para sócios e colaboradores
                 </li>
-                <li>
+                <li className="kl2-stagger" style={{ transitionDelay: '180ms' }}>
                   <Check size={16} /> Cancele quando quiser, sem multa
                 </li>
               </ul>
             </div>
 
-            <div className="kl2-pricing-card">
+            <div className="kl2-pricing-card kl2-stagger" style={{ transitionDelay: '120ms' }}>
               <div className="kl2-pricing-head">
                 <div>
                   <h3>Plano Principal</h3>
