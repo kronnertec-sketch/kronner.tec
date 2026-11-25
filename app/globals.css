@@ -6493,6 +6493,7 @@ textarea {
 .kr-rail {
   position: sticky;
   top: 96px;
+  z-index: 30;
   display: flex;
   flex-direction: column;
   align-items: center;
