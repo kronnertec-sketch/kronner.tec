@@ -5027,51 +5027,58 @@ textarea {
   --ease-in-out-kr: cubic-bezier(0.77, 0, 0.175, 1);
 }
 
-/* --- 6-Stage Branded Entrance Overlay (~2.4s, GPU-only transform/opacity/clip-path) --- */
+/* --- 6-Stage Branded Entrance Overlay (~2.8s, GPU-only transform/opacity/clip-path) --- */
 .kr-entrance {
   position: fixed;
   inset: 0;
   z-index: 9999;
-  background: var(--obsidian, #0B0E10);
+  background: linear-gradient(145deg, #095740 0%, #0D6E52 52%, #0B251E 100%);
   display: grid;
   place-items: center;
   overflow: hidden;
   pointer-events: auto;
   opacity: 1;
-  transition: opacity 420ms var(--ease-out-kr);
+  transition: opacity 480ms var(--ease-out-kr);
 }
 
-.kr-entrance-glow {
-  position: absolute;
-  width: 420px;
-  height: 420px;
+.kr-entrance-wave-ring {
+  position: fixed;
+  left: var(--logo-x, 44px);
+  top: var(--logo-y, 38px);
+  width: 24px;
+  height: 24px;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(30, 194, 143, 0.16) 0%, rgba(182, 123, 40, 0.06) 45%, transparent 72%);
-  transform: scale(0.85);
+  border: 2px solid rgba(30, 194, 143, 0.7);
+  background: radial-gradient(circle, rgba(242, 245, 243, 0.22) 0%, rgba(30, 194, 143, 0.08) 55%, transparent 72%);
+  transform: translate3d(-50%, -50%, 0) scale(0.2);
   opacity: 0;
-  transition: transform 900ms var(--ease-out-kr), opacity 700ms var(--ease-out-kr);
+  pointer-events: none;
+  transition: transform 520ms var(--ease-out-kr), opacity 460ms var(--ease-out-kr);
+  will-change: transform, opacity;
+}
+
+.kr-entrance--wave-open {
+  opacity: 0;
   pointer-events: none;
 }
 
-.kr-entrance--write .kr-entrance-glow,
-.kr-entrance--spin .kr-entrance-glow {
-  transform: scale(1.1);
-  opacity: 1;
-}
-
-.kr-entrance--dock .kr-entrance-glow,
-.kr-entrance--reveal .kr-entrance-glow {
-  transform: scale(1.4);
-  opacity: 0;
+.kr-entrance--wave-open .kr-entrance-wave-ring {
+  opacity: 0.9;
+  transform: translate3d(-50%, -50%, 0) scale(110);
 }
 
 .kr-entrance-stage {
+  position: relative;
   display: inline-flex;
   align-items: center;
-  gap: 14px;
+  justify-content: center;
   transform: translate3d(0, 0, 0) scale(1);
-  transition: transform 520ms var(--ease-in-out-kr), opacity 380ms var(--ease-out-kr);
-  will-change: transform, opacity;
+  transition: transform 500ms var(--ease-in-out-kr);
+  will-change: transform;
+}
+
+.kr-entrance-stage.is-docked {
+  transform: translate3d(var(--dock-dx, -520px), var(--dock-dy, -320px), 0) scale(var(--dock-scale, 0.62));
 }
 
 .kr-entrance-mark {
@@ -5079,120 +5086,125 @@ textarea {
   align-items: center;
   justify-content: center;
   opacity: 0;
-  transform: scale(0.92) rotate(0deg);
-  transition: transform 520ms var(--ease-in-out-kr), opacity 320ms var(--ease-out-kr);
+  transform: scale(0.86) rotate(0deg);
+  transition: transform 540ms var(--ease-in-out-kr), opacity 300ms var(--ease-out-kr);
   will-change: transform, opacity;
 }
 
-.kr-entrance-word {
+/* Center wordmark: K R O N N E R */
+.kr-entrance-center-word {
   display: inline-flex;
   align-items: center;
   gap: 0.06em;
+  margin-left: 14px;
+  max-width: 420px;
   overflow: hidden;
-  transition: opacity 320ms var(--ease-out-kr), transform 420ms var(--ease-out-kr);
-  will-change: opacity, transform;
+  transition: max-width 420ms var(--ease-in-out-kr), margin-left 420ms var(--ease-in-out-kr), opacity 280ms var(--ease-out-kr);
 }
 
 .kr-entrance-char {
   display: inline-block;
   font-family: var(--font-display, system-ui);
-  font-size: clamp(1.85rem, 4.2vw, 2.75rem);
+  font-size: clamp(1.9rem, 4.4vw, 2.9rem);
   font-weight: 700;
-  letter-spacing: 0.1em;
-  color: var(--obsidian-ink, #F2F5F3);
+  letter-spacing: 0.12em;
+  color: #F2F5F3;
   line-height: 1;
   opacity: 0;
-  transform: translate3d(0, 14px, 0) scale(0.94);
-  transition: opacity 380ms var(--ease-out-kr), transform 420ms var(--ease-out-kr);
+  transform: translate3d(0, 14px, 0) scale(0.92);
+  transition: opacity 320ms var(--ease-out-kr), transform 360ms var(--ease-out-kr);
   will-change: opacity, transform;
 }
 
-/* Stage 2: Letter-by-letter progressive write */
-.kr-entrance--write .kr-entrance-mark {
+/* Corner wordmark (hidden until K lands in the corner) */
+.kr-entrance-corner-word {
+  position: absolute;
+  left: calc(100% + 12px);
+  top: 50%;
+  transform: translate3d(0, -50%, 0);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.05em;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.kr-entrance-corner-char {
+  display: inline-block;
+  font-family: var(--font-display, system-ui);
+  font-size: 2.1rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: #F2F5F3;
+  line-height: 1;
+  opacity: 0;
+  transform: translate3d(-8px, 0, 0) scale(0.94);
+  transition: opacity 280ms var(--ease-out-kr), transform 320ms var(--ease-out-kr);
+  will-change: opacity, transform;
+}
+
+/* Stage 2: Write KRONNER in the center */
+.kr-entrance--write-center .kr-entrance-mark {
   opacity: 1;
   transform: scale(1) rotate(0deg);
 }
 
-.kr-entrance--write .kr-entrance-char {
+.kr-entrance--write-center .kr-entrance-char {
   opacity: 1;
   transform: translate3d(0, 0, 0) scale(1);
 }
 
-/* Stage 3: Highlight K + refined technological precision rotation */
-.kr-entrance--spin .kr-entrance-word {
-  opacity: 0.12;
-  transform: translate3d(8px, 0, 0);
+/* Stage 3: Retract wordmark -> ONLY K remains centered and spins cleanly */
+.kr-entrance--isolate-k .kr-entrance-center-word,
+.kr-entrance--fly-corner .kr-entrance-center-word,
+.kr-entrance--write-corner .kr-entrance-center-word,
+.kr-entrance--wave-open .kr-entrance-center-word {
+  max-width: 0;
+  margin-left: 0;
+  opacity: 0;
 }
 
-.kr-entrance--spin .kr-entrance-char {
+.kr-entrance--isolate-k .kr-entrance-char {
+  opacity: 0;
+  transform: translate3d(-10px, 0, 0) scale(0.9);
+}
+
+.kr-entrance--isolate-k .kr-entrance-mark {
   opacity: 1;
-  transform: translate3d(0, 0, 0) scale(1);
+  transform: scale(1.2) rotate(360deg);
 }
 
-.kr-entrance--spin .kr-entrance-mark {
-  opacity: 1;
-  transform: scale(1.16) rotate(360deg);
-}
-
-/* Stage 4: Glide K toward header/sidebar brand anchor */
-.kr-entrance--dock .kr-entrance-stage {
-  transform: translate3d(calc(-50vw + 132px), calc(-50vh + 40px), 0) scale(0.68);
-}
-
-.kr-entrance--dock .kr-entrance-mark {
+/* Stage 4: K glides to the exact corner position */
+.kr-entrance--fly-corner .kr-entrance-mark {
   opacity: 1;
   transform: scale(1) rotate(360deg);
 }
 
-.kr-entrance--dock .kr-entrance-word {
-  opacity: 0;
-  transform: translate3d(-10px, 0, 0);
-}
-
-/* Stage 5 & 6: Re-reveal wordmark at anchor + dissolve overlay */
-.kr-entrance--reveal {
-  opacity: 0;
-  pointer-events: none;
-}
-
-.kr-entrance--reveal .kr-entrance-stage {
-  transform: translate3d(calc(-50vw + 132px), calc(-50vh + 40px), 0) scale(0.68);
-}
-
-.kr-entrance--reveal .kr-entrance-mark {
+/* Stage 5: Docked in corner, finish writing KRONNER beside K */
+.kr-entrance--write-corner .kr-entrance-mark,
+.kr-entrance--wave-open .kr-entrance-mark {
   opacity: 1;
   transform: scale(1) rotate(360deg);
 }
 
-.kr-entrance--reveal .kr-entrance-word {
-  opacity: 1;
-  transform: translate3d(0, 0, 0);
-}
-
-.kr-entrance--reveal .kr-entrance-char {
+.kr-entrance--write-corner .kr-entrance-corner-char,
+.kr-entrance--wave-open .kr-entrance-corner-char {
   opacity: 1;
   transform: translate3d(0, 0, 0) scale(1);
 }
 
-/* Reduced-motion gentle static fade (no spin/glide) */
+/* Reduced-motion gentle static fade */
 .kr-entrance--reduced .kr-entrance-mark,
 .kr-entrance--reduced .kr-entrance-char {
   opacity: 1;
   transform: none;
 }
 
-@media (max-width: 960px) {
-  .kr-entrance--dock .kr-entrance-stage,
-  .kr-entrance--reveal .kr-entrance-stage {
-    transform: translate3d(0, calc(-50vh + 34px), 0) scale(0.72);
-  }
-}
-
-/* Staggered wave reveal of panel shell once entrance completes */
-@keyframes krWaveReveal {
+/* Stage 6: Outward wave cascade from the Kronner logo across EVERY nav icon, topbar, KPI & card */
+@keyframes krWavePop {
   from {
     opacity: 0;
-    transform: translate3d(0, 12px, 0) scale(0.99);
+    transform: translate3d(-10px, 12px, 0) scale(0.96);
   }
   to {
     opacity: 1;
@@ -5200,26 +5212,74 @@ textarea {
   }
 }
 
-.app-shell.kr-wave-ready .sidebar {
-  animation: krWaveReveal 360ms var(--ease-out-kr) both;
+@keyframes krShellRipple {
+  from {
+    clip-path: circle(4% at 44px 38px);
+  }
+  to {
+    clip-path: circle(150% at 44px 38px);
+  }
 }
+
+.app-shell.kr-wave-ready {
+  animation: krShellRipple 620ms var(--ease-out-kr) both;
+}
+
+.app-shell.kr-wave-ready .sidebar .shop-label {
+  animation: krWavePop 360ms var(--ease-out-kr) 60ms both;
+}
+
+.app-shell.kr-wave-ready .sidebar nav button {
+  animation: krWavePop 360ms var(--ease-out-kr) both;
+}
+
+.app-shell.kr-wave-ready .sidebar nav button:nth-child(1) { animation-delay: 90ms; }
+.app-shell.kr-wave-ready .sidebar nav button:nth-child(2) { animation-delay: 135ms; }
+.app-shell.kr-wave-ready .sidebar nav button:nth-child(3) { animation-delay: 180ms; }
+.app-shell.kr-wave-ready .sidebar nav button:nth-child(4) { animation-delay: 225ms; }
+.app-shell.kr-wave-ready .sidebar nav button:nth-child(5) { animation-delay: 270ms; }
+.app-shell.kr-wave-ready .sidebar nav button:nth-child(6) { animation-delay: 315ms; }
+.app-shell.kr-wave-ready .sidebar nav button:nth-child(7) { animation-delay: 360ms; }
+.app-shell.kr-wave-ready .sidebar nav button:nth-child(8) { animation-delay: 405ms; }
+.app-shell.kr-wave-ready .sidebar nav button:nth-child(9) { animation-delay: 450ms; }
+.app-shell.kr-wave-ready .sidebar nav button:nth-child(10) { animation-delay: 495ms; }
 
 .app-shell.kr-wave-ready .topbar {
-  animation: krWaveReveal 380ms var(--ease-out-kr) 60ms both;
+  animation: krWavePop 380ms var(--ease-out-kr) 140ms both;
 }
 
-.app-shell.kr-wave-ready .content > * {
-  animation: krWaveReveal 420ms var(--ease-out-kr) 120ms both;
+.app-shell.kr-wave-ready .page-heading {
+  animation: krWavePop 400ms var(--ease-out-kr) 200ms both;
+}
+
+.app-shell.kr-wave-ready .stats > *,
+.app-shell.kr-wave-ready .kr-kpi-grid > * {
+  animation: krWavePop 420ms var(--ease-out-kr) both;
+}
+
+.app-shell.kr-wave-ready .stats > *:nth-child(1),
+.app-shell.kr-wave-ready .kr-kpi-grid > *:nth-child(1) { animation-delay: 250ms; }
+.app-shell.kr-wave-ready .stats > *:nth-child(2),
+.app-shell.kr-wave-ready .kr-kpi-grid > *:nth-child(2) { animation-delay: 310ms; }
+.app-shell.kr-wave-ready .stats > *:nth-child(3),
+.app-shell.kr-wave-ready .kr-kpi-grid > *:nth-child(3) { animation-delay: 370ms; }
+.app-shell.kr-wave-ready .stats > *:nth-child(4),
+.app-shell.kr-wave-ready .kr-kpi-grid > *:nth-child(4) { animation-delay: 430ms; }
+
+.app-shell.kr-wave-ready .dashboard-grid > *,
+.app-shell.kr-wave-ready .content > .card,
+.app-shell.kr-wave-ready .kr-module > .card {
+  animation: krWavePop 440ms var(--ease-out-kr) 380ms both;
 }
 
 @media (prefers-reduced-motion: reduce) {
   .kr-entrance,
   .kr-entrance *,
-  .app-shell.kr-wave-ready .sidebar,
-  .app-shell.kr-wave-ready .topbar,
-  .app-shell.kr-wave-ready .content > * {
+  .app-shell.kr-wave-ready,
+  .app-shell.kr-wave-ready * {
     animation: none !important;
     transition: none !important;
+    clip-path: none !important;
   }
 }
 

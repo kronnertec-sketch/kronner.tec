@@ -430,7 +430,7 @@ export default function Dashboard(){
   if(loading)return (
     <>
       <KronnerEntrance loading={true} onComplete={handleEntranceDone} hasError={!!error}/>
-      <div style={{minHeight:'100vh',background:'#0B0E10'}} aria-busy="true"/>
+      <div style={{minHeight:'100vh',background:'#0D6E52'}} aria-busy="true"/>
     </>
   );
   if(onboarding)return (
