@@ -10,10 +10,10 @@ type KronnerEntranceProps = {
   hasError?: boolean;
 };
 
-let entrancePlayedInMemory = false;
+let entranceCompletedInSession = false;
 
 /**
- * 6-stage branded Kronner entrance (~2.4s total):
+ * 6-stage branded Kronner entrance (~2.5s total):
  * 1. Full-screen Obsidian Carbon (#0B0E10) canvas (brand anchor)
  * 2. Progressive reveal of "KRONNER" wordmark
  * 3. Technological precision sweep/rotation on the K chronograph mark
@@ -28,10 +28,11 @@ let entrancePlayedInMemory = false;
 export function KronnerEntrance({ onComplete, hasError }: KronnerEntranceProps) {
   const [phase, setPhase] = useState<
     'idle' | 'write' | 'spin' | 'dock' | 'reveal' | 'done'
-  >(() => (entrancePlayedInMemory ? 'done' : 'idle'));
+  >(() => (entranceCompletedInSession ? 'done' : 'idle'));
 
   useEffect(() => {
-    if (entrancePlayedInMemory) {
+    if (entranceCompletedInSession) {
+      setPhase('done');
       onComplete();
       return;
     }
@@ -41,24 +42,37 @@ export function KronnerEntrance({ onComplete, hasError }: KronnerEntranceProps) 
       window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
     if (reduced) {
-      entrancePlayedInMemory = true;
+      entranceCompletedInSession = true;
       setPhase('done');
       onComplete();
       return;
     }
 
-    entrancePlayedInMemory = true;
-    const t1 = window.setTimeout(() => setPhase('write'), 60);
-    const t2 = window.setTimeout(() => setPhase('spin'), 860);
-    const t3 = window.setTimeout(() => setPhase('dock'), 1420);
-    const t4 = window.setTimeout(() => setPhase('reveal'), 1940);
-    const t5 = window.setTimeout(() => {
-      setPhase('done');
-      onComplete();
-    }, 2420);
+    let raf1 = 0;
+    let raf2 = 0;
+    let t2 = 0;
+    let t3 = 0;
+    let t4 = 0;
+    let t5 = 0;
+
+    // Guarantee initial 'idle' frame paints before starting stage 2 ('write')
+    raf1 = window.requestAnimationFrame(() => {
+      raf2 = window.requestAnimationFrame(() => {
+        setPhase('write');
+        t2 = window.setTimeout(() => setPhase('spin'), 850);
+        t3 = window.setTimeout(() => setPhase('dock'), 1450);
+        t4 = window.setTimeout(() => setPhase('reveal'), 2000);
+        t5 = window.setTimeout(() => {
+          entranceCompletedInSession = true;
+          setPhase('done');
+          onComplete();
+        }, 2500);
+      });
+    });
 
     return () => {
-      window.clearTimeout(t1);
+      window.cancelAnimationFrame(raf1);
+      window.cancelAnimationFrame(raf2);
       window.clearTimeout(t2);
       window.clearTimeout(t3);
       window.clearTimeout(t4);
@@ -68,6 +82,7 @@ export function KronnerEntrance({ onComplete, hasError }: KronnerEntranceProps) 
 
   useEffect(() => {
     if (hasError && phase !== 'done') {
+      entranceCompletedInSession = true;
       setPhase('done');
       onComplete();
     }
@@ -77,6 +92,7 @@ export function KronnerEntrance({ onComplete, hasError }: KronnerEntranceProps) 
     if (phase === 'done') return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
+        entranceCompletedInSession = true;
         setPhase('done');
         onComplete();
       }
@@ -93,6 +109,7 @@ export function KronnerEntrance({ onComplete, hasError }: KronnerEntranceProps) 
       role="presentation"
       aria-hidden="true"
       onClick={() => {
+        entranceCompletedInSession = true;
         setPhase('done');
         onComplete();
       }}
@@ -100,7 +117,7 @@ export function KronnerEntrance({ onComplete, hasError }: KronnerEntranceProps) 
       <div className="kr-entrance-glow" />
       <div className="kr-entrance-stage">
         <div className="kr-entrance-mark">
-          <BrandLogo variant="light" height={44} markOnly />
+          <BrandLogo variant="light" height={48} markOnly />
         </div>
         <div className="kr-entrance-word">
           <span>KRONNER</span>
