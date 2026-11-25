@@ -62,9 +62,9 @@ export function HeroDashboardPreview() {
             <HelpCircle size={13} />
           </span>
           <span className="kl2-app-user">
-            <span className="kl2-app-avatar">J</span>
+            <span className="kl2-app-avatar">C</span>
             <span>
-              <b>Jorge Barber</b>
+              <b>Navalha Sul</b>
               <small>Proprietário</small>
             </span>
           </span>
@@ -93,7 +93,7 @@ export function HeroDashboardPreview() {
         <div className="kl2-app-main">
           <div className="kl2-app-greeting">
             <div>
-              <strong>Bom dia, Jorge</strong>
+              <strong>Bom dia, Caio</strong>
               <small>Sexta-feira · 19 atendimentos previstos hoje</small>
             </div>
             <span className="kl2-app-cta-pill">
@@ -154,7 +154,7 @@ export function HeroDashboardPreview() {
                   <span className="kl2-app-time">14:00</span>
                   <div>
                     <b>Lucas Almeida</b>
-                    <small>Corte degradê + Barba · Jorge</small>
+                    <small>Corte degradê + Barba · Caio</small>
                   </div>
                   <span className="kl2-app-status is-done">Concluído</span>
                 </div>
@@ -170,7 +170,7 @@ export function HeroDashboardPreview() {
                   <span className="kl2-app-time">15:30</span>
                   <div>
                     <b>Pedro Henrique</b>
-                    <small>Barba navalhada · Jorge</small>
+                    <small>Barba navalhada · Caio</small>
                   </div>
                   <span className="kl2-app-status">Confirmado</span>
                 </div>
@@ -191,7 +191,7 @@ export function MobileHeroDashboardPreview() {
     <div className="kl2-mob-hero-frame" aria-label="Prévia do painel Kronner no celular">
       <div className="kl2-mob-app-bar">
         <BrandLogo variant="dark" height={20} />
-        <span className="kl2-app-avatar">J</span>
+        <span className="kl2-app-avatar">C</span>
       </div>
 
       <div className="kl2-app-focal is-compact">
@@ -235,7 +235,7 @@ export function MobileHeroDashboardPreview() {
           <span className="kl2-app-time">15:30</span>
           <div>
             <b>Pedro Henrique</b>
-            <small>Barba navalhada · Jorge</small>
+            <small>Barba navalhada · Caio</small>
           </div>
           <span className="kl2-app-status">Confirmado</span>
         </div>
@@ -245,9 +245,9 @@ export function MobileHeroDashboardPreview() {
 }
 
 const DEMO_APPOINTMENTS = [
-  { id: 'a1', time: '09:30', client: 'Bruno Ferreira', service: 'Corte degradê', chair: 'Jorge', status: 'done' as const, price: 'R$ 55,00' },
+  { id: 'a1', time: '09:30', client: 'Bruno Ferreira', service: 'Corte degradê', chair: 'Caio', status: 'done' as const, price: 'R$ 55,00' },
   { id: 'a2', time: '10:20', client: 'Lucas Almeida', service: 'Corte + Barba', chair: 'Rafael', status: 'booked' as const, price: 'R$ 85,00' },
-  { id: 'a3', time: '11:10', client: 'Diego Martins', service: 'Barba navalhada', chair: 'Jorge', status: 'booked' as const, price: 'R$ 40,00' },
+  { id: 'a3', time: '11:10', client: 'Diego Martins', service: 'Barba navalhada', chair: 'Caio', status: 'booked' as const, price: 'R$ 40,00' },
   { id: 'a4', time: '14:00', client: 'Matheus Costa', service: 'Corte social', chair: 'Rafael', status: 'booked' as const, price: 'R$ 50,00' },
 ];
 
@@ -269,7 +269,7 @@ const DEMO_SLOTS: Record<'manha' | 'tarde', string[]> = {
  */
 export function InteractiveFeatureDemo({ feature }: { feature: DemoFeatureId }) {
   // Agenda state
-  const [chair, setChair] = useState<'Todas' | 'Jorge' | 'Rafael'>('Todas');
+  const [chair, setChair] = useState<'Todas' | 'Caio' | 'Rafael'>('Todas');
   const [doneIds, setDoneIds] = useState<string[]>(['a1']);
 
   // Public booking link state
@@ -297,7 +297,7 @@ export function InteractiveFeatureDemo({ feature }: { feature: DemoFeatureId }) 
             <strong>Agenda · Hoje</strong>
           </div>
           <div className="kl2-demo-seg" role="tablist" aria-label="Filtrar cadeira">
-            {(['Todas', 'Jorge', 'Rafael'] as const).map(c => (
+            {(['Todas', 'Caio', 'Rafael'] as const).map(c => (
               <button
                 key={c}
                 type="button"
@@ -356,7 +356,7 @@ export function InteractiveFeatureDemo({ feature }: { feature: DemoFeatureId }) 
         <div className="kl2-demo-bar">
           <div className="kl2-demo-url">
             <Scissors size={14} />
-            <span>kronner.vercel.app/b/jorge-barber</span>
+            <span>kronner.vercel.app/b/navalha-sul</span>
           </div>
           <span className="kl2-app-pill-tag">
             <Copy size={12} /> Link na bio
