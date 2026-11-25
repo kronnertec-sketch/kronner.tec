@@ -6914,14 +6914,6 @@ textarea {
   }
 }
 
-.kr-shell:not(.kr-wave-ready) .kr-topnav,
-.kr-shell:not(.kr-wave-ready) .kr-rail-btn,
-.kr-shell:not(.kr-wave-ready) .kr-greeting-row,
-.kr-shell:not(.kr-wave-ready) .kr-bento > *,
-.kr-shell:not(.kr-wave-ready) .kr-bento-wide > * {
-  opacity: 0;
-}
-
 .kr-shell.kr-wave-ready .kr-topnav {
   animation: krPanelTopIn 520ms cubic-bezier(0.23, 1, 0.32, 1) 0ms both;
 }

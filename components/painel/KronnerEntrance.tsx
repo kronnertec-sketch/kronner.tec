@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { BrandLogo } from '@/components/BrandLogo';
 
 type KronnerEntranceProps = {
@@ -53,22 +53,24 @@ const WORDMARK_LETTERS = [
 ] as const;
 
 /**
- * Branded Kronner entrance (~1.55s) built with animate/RECIPES.md:
+ * Branded Kronner entrance (~1.5s):
  * 1. Full-screen Kronner Deep Botanical Emerald (#0D6E52)
  * 2. Official K mark enters first via HTML-wrapped GPU transform + opacity
- * 3. Wordmark "kronner" writes progressively left-to-right via clip-path wipe + letter opacity stagger
- * 4. Smoothly dissolves into the panel once data is ready (works reliably on Desktop & Mobile,
- *    including Windows laptops with reduced-motion enabled via gentler opacity-only sequence)
+ * 3. Wordmark "kronner" writes progressively left-to-right via clip-path wipe + letter stagger
+ * 4. Smoothly dissolves and triggers the panel opening choreography without ever cancelling timers
  */
 export function KronnerEntrance({ loading = false, onComplete, hasError }: KronnerEntranceProps) {
   const [exiting, setExiting] = useState(false);
   const [done, setDone] = useState(() => entranceShownInMemory);
   const [minTimePassed, setMinTimePassed] = useState(false);
+  const startedExitRef = useRef(false);
+  const onCompleteRef = useRef(onComplete);
+  onCompleteRef.current = onComplete;
 
   useEffect(() => {
     if (entranceShownInMemory) {
       setDone(true);
-      onComplete();
+      onCompleteRef.current();
       return;
     }
 
@@ -78,25 +80,22 @@ export function KronnerEntrance({ loading = false, onComplete, hasError }: Kronn
 
     const timer = window.setTimeout(() => setMinTimePassed(true), reduced ? 980 : 1480);
     return () => window.clearTimeout(timer);
-  }, [onComplete]);
+  }, []);
 
   useEffect(() => {
-    if (done || exiting) return;
+    if (done || startedExitRef.current) return;
     if ((minTimePassed && !loading) || hasError) {
+      startedExitRef.current = true;
       setExiting(true);
-      const waveStart = window.setTimeout(() => {
-        onComplete();
-      }, hasError ? 0 : 240);
-      const finish = window.setTimeout(() => {
+      window.setTimeout(() => {
+        onCompleteRef.current();
+      }, hasError ? 0 : 180);
+      window.setTimeout(() => {
         entranceShownInMemory = true;
         setDone(true);
       }, 420);
-      return () => {
-        window.clearTimeout(waveStart);
-        window.clearTimeout(finish);
-      };
     }
-  }, [minTimePassed, loading, hasError, done, exiting, onComplete]);
+  }, [minTimePassed, loading, hasError, done]);
 
   if (done) return null;
 
