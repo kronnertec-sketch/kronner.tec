@@ -80,3 +80,24 @@ test('Service worker blocks protocol-relative URLs and enforces same-origin navi
   assert.ok(sw.includes("startsWith('//')"), 'sw.js must reject protocol-relative URLs');
   assert.ok(sw.includes('resolved.origin === origin'), 'sw.js must verify same-origin before navigating');
 });
+
+test('Buffer release SQL migration enforces search_path, lock order, and access grants', () => {
+  const sql = fs.readFileSync(
+    path.join(process.cwd(), 'supabase/migrations/20261125050000_buffer_release.sql'),
+    'utf8'
+  );
+  assert.ok(sql.includes('buffer_released'), 'Must add and check buffer_released');
+  assert.ok(
+    sql.includes('security definer set search_path = \'\''),
+    'kroner_release_buffer must pin search_path'
+  );
+  assert.ok(
+    sql.includes('revoke all on function public.kroner_release_buffer(uuid) from public, anon'),
+    'kroner_release_buffer must revoke public and anon access'
+  );
+  assert.ok(
+    sql.indexOf('from kroner_private.shops where id = v_shop for update') <
+      sql.indexOf('from kroner_private.appointments\n  where id = p_appointment'),
+    'Must lock shops before appointments'
+  );
+});

@@ -1318,12 +1318,51 @@ time,
   background: var(--bg);
   border: 1px dashed var(--line-strong);
   border-radius: var(--r-sm);
-  padding: 7px 14px;
+  padding: 7px 12px 7px 14px;
   font-size: 12px;
   color: var(--muted);
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
   gap: 8px;
+}
+
+.agenda-interval-info {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-variant-numeric: tabular-nums;
+}
+
+.agenda-interval-release-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 9px;
+  border-radius: 999px;
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+  color: var(--ink-soft, var(--ink));
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 140ms ease, border-color 140ms ease, color 140ms ease, transform 120ms ease;
+}
+
+.agenda-interval-release-btn:hover:not(:disabled) {
+  background: var(--danger-bg, #fef2f2);
+  border-color: var(--danger, #dc2626);
+  color: var(--danger, #dc2626);
+}
+
+.agenda-interval-release-btn:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.agenda-interval-release-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 .agenda-inspector {
@@ -5894,6 +5933,34 @@ textarea {
   display: flex;
   flex-direction: column;
   gap: 14px;
+}
+
+.kr-buffer-box {
+  margin-top: 16px;
+  padding: 14px 16px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--line);
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.kr-buffer-help {
+  margin: 0;
+  font-size: 0.84rem;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.kr-buffer-input-label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: 280px;
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: var(--ink);
 }
 
 .kr-dirty-pill {

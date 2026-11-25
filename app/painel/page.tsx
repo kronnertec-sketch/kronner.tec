@@ -120,7 +120,8 @@ export default function Dashboard(){
     [to,TT]=useState(today()),
     [booking,BO]=useState<Row>({services:[],day:today(),period:'afternoon',start:'',client:'',name:'',phone:''}),
     [slots,SL]=useState<Row[]>([]),
-    [storedNotices,setStoredNotices]=useState<Row[]>([]);
+    [storedNotices,setStoredNotices]=useState<Row[]>([]),
+    [releasedBuffers,setReleasedBuffers]=useState<Record<string,boolean>>({});
 
   const loadNotifications=useCallback(async()=>{
     try{
@@ -233,6 +234,15 @@ export default function Dashboard(){
   },[data?.shop.active,loadNotifications]);
 
   useEffect(()=>{
+    if(!selectedAptId||modal)return;
+    const onKey=(e:KeyboardEvent)=>{
+      if(e.key==='Escape')setSelectedAptId('');
+    };
+    window.addEventListener('keydown',onKey);
+    return()=>window.removeEventListener('keydown',onKey);
+  },[selectedAptId,modal]);
+
+  useEffect(()=>{
     const prof=(role==='employee'&&modal?.type==='booking')?(identity.id||ownerChair):(booking.professional||ownerChair||data?.professionals?.[0]?.id);
     if(!modal||!['booking','move'].includes(modal.type)||!data||!booking.services?.length||!prof)return;
     let active=true;
@@ -284,7 +294,7 @@ export default function Dashboard(){
   const dayAllAppointments=(data?.appointments||[])
     .filter(a=>localDay(a.starts)===date && (agendaChair==='all'||!a.professional||a.professional===agendaChair));
 
-  const selectedApt=filteredAppointments.find(a=>a.id===selectedAptId)||filteredAppointments[0]||null;
+  const selectedApt=selectedAptId?(filteredAppointments.find(a=>a.id===selectedAptId)||null):null;
   const selectedAptCharge=selectedApt?data?.charges.find(c=>c.appointment===selectedApt.id):null;
   const selectedAptPaid=selectedAptCharge?paid(selectedAptCharge.id):0;
 
@@ -543,7 +553,25 @@ export default function Dashboard(){
   const paymentFields=<><Select label="Método" name="method" options={methods}/><div className="form-grid"><Field label="Data do pagamento" name="paid_on" type="date" value={today()}/><Field label="Disponível no caixa em" name="settles_on" type="date" value={today()}/></div><small>Taxas de cartão calculadas conforme as configurações. Pix e dinheiro sem desconto.</small></>;
 
   const dayReceived=total('in',data.payments.filter(p=>p.settles_on===date),true);
-  const bufferMinutes=Number(cfg.buffer||10);
+  async function releaseSafetyBuffer(aptId:string){
+    setReleasedBuffers(prev=>({...prev,[aptId]:true}));
+    try{
+      await call('release_buffer',{p_appointment:aptId});
+      await load();
+      showToast('Intervalo de segurança liberado na agenda.');
+    }catch(e){
+      // Even if SQL migration is not yet applied, keep local dismissal or show error if permission denied
+      const msg=(e as Error).message||'';
+      if(/kroner_release_buffer/i.test(msg)){
+        showToast('Intervalo removido da visualização.');
+      }else{
+        setReleasedBuffers(prev=>{const next={...prev};delete next[aptId];return next;});
+        E(msg);
+      }
+    }
+  }
+
+  const bufferMinutes=Number(cfg.buffer??10);
 
   const isTeam=data.professionals.length>1;
   const isManager=role==='owner'||role==='partner';
@@ -1028,7 +1056,7 @@ export default function Dashboard(){
                     <Empty title="Um dia com espaço para novos clientes." text="Os horários livres aparecem automaticamente no link de agendamento ou você pode criar um agendamento manual apenas com nome e telefone."/>
                   ):(
                     <div className="agenda-timeline">
-                      {filteredAppointments.map((a,idx)=>{
+                      {filteredAppointments.map((a)=>{
                         const durationMins=Math.max(5,Math.round((Date.parse(a.ends)-Date.parse(a.starts))/60000));
                         const isSelected=selectedApt?.id===a.id;
                         const statusMap:Record<string,{label:string;cls:string}>={
@@ -1038,8 +1066,19 @@ export default function Dashboard(){
                           cancelled:{label:'Cancelado',cls:'warn'}
                         };
                         const st=statusMap[a.status]||statusMap.booked;
-                        const nextApt=filteredAppointments[idx+1];
-                        const showBuffer=nextApt && localDay(nextApt.starts)===localDay(a.starts) && bufferMinutes>0;
+                        const canReleaseBuffer=isManager||a.professional===identity.id;
+                        const aptProf=data.professionals.find(p=>p.id===a.professional);
+                        const aptBufferMinutes=aptProf?.preferences?.buffer!==undefined&&aptProf?.preferences?.buffer!==null
+                          ? Number(aptProf.preferences.buffer)
+                          : bufferMinutes;
+                        const showBuffer=
+                          (a.status==='booked'||a.status==='done') &&
+                          aptBufferMinutes>0 &&
+                          !a.buffer_released &&
+                          !releasedBuffers[a.id];
+                        const bufferEndIso=showBuffer
+                          ?new Date(Date.parse(a.ends)+aptBufferMinutes*60000).toISOString()
+                          :'';
                         return (
                           <div key={a.id}>
                             <div className="agenda-slot-item">
@@ -1047,8 +1086,8 @@ export default function Dashboard(){
                               <div
                                 role="button"
                                 tabIndex={0}
-                                onClick={()=>setSelectedAptId(a.id)}
-                                onKeyDown={e=>{if(e.key==='Enter'||e.key===' ')setSelectedAptId(a.id);}}
+                                onClick={()=>setSelectedAptId(isSelected?'':a.id)}
+                                onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();setSelectedAptId(isSelected?'':a.id);}}}
                                 className={'agenda-card status-'+a.status+(isSelected?' selected-apt':'')}
                               >
                                 <div className="agenda-card-main">
@@ -1072,7 +1111,21 @@ export default function Dashboard(){
                               <div className="agenda-interval-row" style={{marginTop:8}}>
                                 <div className="agenda-time-col" style={{paddingTop:0,fontSize:11,color:'var(--muted)'}}>{at(a.ends)}</div>
                                 <div className="agenda-interval-pill">
-                                  <Coffee size={14}/> Intervalo de segurança · {bufferMinutes} min
+                                  <span className="agenda-interval-info">
+                                    <Coffee size={14}/> Intervalo de segurança · {at(a.ends)} às {at(bufferEndIso)} ({aptBufferMinutes} min)
+                                  </span>
+                                  {canReleaseBuffer&&(
+                                    <button
+                                      type="button"
+                                      className="agenda-interval-release-btn"
+                                      title="Liberar intervalo de segurança na agenda"
+                                      aria-label="Excluir intervalo de segurança"
+                                      disabled={busy}
+                                      onClick={()=>releaseSafetyBuffer(a.id)}
+                                    >
+                                      <X size={13}/> Liberar
+                                    </button>
+                                  )}
                                 </div>
                               </div>
                             )}
@@ -1426,6 +1479,7 @@ export default function Dashboard(){
                 maxDays:Number(cfg.maxDays??21),
                 grid:Number(cfg.grid??15),
                 notice:Number(cfg.notice??10),
+                buffer:Number(cfg.buffer??10),
                 cancelMinutes:Number(cfg.cancelMinutes??120),
                 grace:Number(cfg.grace??5),
               }}

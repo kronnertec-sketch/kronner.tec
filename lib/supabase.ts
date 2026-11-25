@@ -35,6 +35,11 @@ export function useApi() {
         if (error) throw new Error(error.message);
         return data;
       }
+      if (action === 'release_buffer') {
+        const { data, error } = await client.rpc('kroner_release_buffer', payload);
+        if (error) throw new Error(error.message);
+        return data;
+      }
       const { data, error } = await client.rpc(
         action.startsWith('team:')
           ? 'kroner_team'

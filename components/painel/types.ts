@@ -20,6 +20,7 @@ export type ShopConfig = {
   maxDays: number;
   grid: number;
   notice: number;
+  buffer?: number;
   cancelMinutes: number;
   grace: number;
   creditFee: number;

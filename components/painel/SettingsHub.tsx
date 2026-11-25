@@ -139,6 +139,7 @@ export function SettingsHub({
     isManager ? 'barbershop' : 'account'
   );
   const [savedToast, setSavedToast] = useState(false);
+  const [bufferEnabled, setBufferEnabled] = useState((cfg.buffer ?? 10) > 0);
 
   async function saveWithFeedback() {
     const ok = await onSaveSettings();
@@ -368,6 +369,47 @@ export function SettingsHub({
                       onChange={e => setCfg({ ...cfg, cancelMinutes: Number(e.target.value) || 0 })}
                     />
                   </label>
+                </div>
+
+                <div className="kr-buffer-box">
+                  <label className="kr-check-inline">
+                    <input
+                      type="checkbox"
+                      checked={bufferEnabled}
+                      onChange={e => {
+                        const checked = e.target.checked;
+                        setBufferEnabled(checked);
+                        setCfg({
+                          ...cfg,
+                          buffer: checked ? (cfg.buffer && cfg.buffer > 0 ? cfg.buffer : 10) : 0,
+                        });
+                      }}
+                    />
+                    <strong>Intervalo de segurança entre atendimentos</strong>
+                  </label>
+                  <p className="kr-buffer-help">
+                    Reserva automaticamente minutos extras após cada atendimento na agenda caso o
+                    corte passe do tempo. Se terminar antes, você pode excluir esse intervalo direto
+                    na agenda para liberar o horário.
+                  </p>
+                  {bufferEnabled && (
+                    <label className="kr-buffer-input-label">
+                      Duração do intervalo de segurança (minutos)
+                      <input
+                        type="number"
+                        min={1}
+                        max={180}
+                        step={5}
+                        value={cfg.buffer || ''}
+                        onChange={e =>
+                          setCfg({
+                            ...cfg,
+                            buffer: Math.max(0, Math.min(180, Number(e.target.value) || 0)),
+                          })
+                        }
+                      />
+                    </label>
+                  )}
                 </div>
               </div>
 
