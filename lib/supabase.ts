@@ -25,6 +25,11 @@ export function useApi() {
       if (!client) {
         throw new Error('Configuração do serviço de dados ausente.');
       }
+      if (action === 'client_reschedule') {
+        const { data, error } = await client.rpc('kroner_client_reschedule', payload);
+        if (error) throw new Error(error.message);
+        return data;
+      }
       const { data, error } = await client.rpc(
         action.startsWith('team:')
           ? 'kroner_team'
@@ -32,8 +37,10 @@ export function useApi() {
             ? 'kroner_pos'
             : action.startsWith('manage:')
               ? 'kroner_management'
-              : 'kroner_api',
-        { action: action.replace(/^(team|pos|manage):/, ''), payload }
+              : action.startsWith('notify:')
+                ? 'kroner_notifications'
+                : 'kroner_api',
+        { action: action.replace(/^(team|pos|manage|notify):/, ''), payload }
       );
       if (error) throw new Error(error.message);
       return data;

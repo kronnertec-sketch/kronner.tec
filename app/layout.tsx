@@ -7,6 +7,11 @@ export const metadata: Metadata = {
   title: 'Kronner · Tempo para o seu talento',
   description:
     'Agenda por cadeira, link público para clientes, feriados automáticos pelo CEP e financeiro com comissões para barbearias.',
+  appleWebApp: {
+    capable: true,
+    title: 'Kronner',
+    statusBarStyle: 'default',
+  },
 };
 
 export const viewport: Viewport = {

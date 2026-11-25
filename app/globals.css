@@ -9250,3 +9250,285 @@ textarea {
     transition: none;
   }
 }
+
+/* ==========================================================================
+   PWA INSTALL & WEB PUSH NOTIFICATION CENTER (Avisos Tab)
+   ========================================================================== */
+.kr-notices-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.kr-notices-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.kr-notices-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.kr-notices-section-head h3 {
+  margin: 0;
+  font-size: 15.5px;
+  color: var(--ink);
+}
+
+.card.notification.is-unread {
+  border-color: rgba(13, 110, 82, 0.34);
+  background: linear-gradient(180deg, #f6fbf8 0%, #ffffff 100%);
+  box-shadow: 0 10px 24px -18px rgba(13, 110, 82, 0.32);
+}
+
+.card.notification.info {
+  border-left: 3px solid var(--copper);
+}
+
+.kr-notice-unread-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: var(--accent);
+  margin-right: 7px;
+  vertical-align: middle;
+}
+
+.kr-notice-time {
+  margin-left: 8px;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+.kr-install-card {
+  background: linear-gradient(145deg, #ffffff 0%, #f4faf7 100%);
+  border: 1px solid rgba(13, 110, 82, 0.22);
+  border-radius: 20px;
+  padding: 20px 22px;
+  box-shadow: 0 16px 36px -24px rgba(13, 110, 82, 0.28);
+}
+
+.kr-install-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.kr-install-title-wrap {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.kr-install-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 13px;
+  background: linear-gradient(135deg, #179e77 0%, #0d6e52 100%);
+  color: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 10px 20px -10px rgba(13, 110, 82, 0.6);
+}
+
+.kr-install-badges {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.kr-device-pill,
+.kr-step-done-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+.kr-device-pill {
+  background: rgba(16, 22, 24, 0.06);
+  color: var(--ink);
+}
+
+.kr-step-done-pill {
+  background: var(--green-bg);
+  color: var(--green);
+}
+
+.kr-install-title-wrap h3 {
+  margin: 0 0 4px;
+  font-size: 17px;
+  line-height: 1.25;
+}
+
+.kr-install-title-wrap p {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.48;
+  color: var(--muted);
+}
+
+.kr-install-blocked {
+  margin-top: 14px;
+  padding: 11px 14px;
+  border-radius: 12px;
+  background: var(--warn-bg);
+  color: var(--warn);
+  font-size: 13px;
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+}
+
+.kr-install-blocked svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.kr-install-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.kr-install-step {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: #ffffff;
+  border: 1px solid var(--line);
+}
+
+.kr-install-step.is-waiting {
+  opacity: 0.72;
+  background: #f8faf9;
+}
+
+.kr-install-step-num {
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  background: var(--selected);
+  color: var(--accent);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.kr-install-step-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.kr-install-step-body strong {
+  display: block;
+  font-size: 14px;
+  color: var(--ink);
+  margin-bottom: 4px;
+}
+
+.kr-install-step-body p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.48;
+  color: var(--muted);
+}
+
+.kr-install-step-action {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.kr-ios-guide {
+  margin: 6px 0 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  font-size: 13px;
+  color: var(--ink);
+}
+
+.kr-ios-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 8px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  font-weight: 600;
+  font-size: 12px;
+  vertical-align: middle;
+}
+
+.kr-push-active-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 12px 16px;
+  border-radius: 14px;
+  background: var(--green-bg);
+  border: 1px solid rgba(13, 110, 82, 0.2);
+  color: var(--green);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.kr-push-active-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 220px;
+}
+
+.kr-push-active-info svg {
+  flex-shrink: 0;
+}
+
+@media (max-width: 640px) {
+  .kr-install-card {
+    padding: 16px;
+  }
+  .kr-install-title-wrap {
+    gap: 11px;
+  }
+  .kr-install-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 11px;
+  }
+  .kr-install-step-action .btn {
+    width: 100%;
+    justify-content: center;
+  }
+}

@@ -9,6 +9,8 @@ import {FinancePanel} from '@/components/painel/FinancePanel';
 import {ReportsPanel} from '@/components/painel/ReportsPanel';
 import {EmployeesPanel} from '@/components/painel/EmployeesPanel';
 import {SettingsHub} from '@/components/painel/SettingsHub';
+import {InstallPushCard} from '@/components/painel/InstallPushCard';
+import {registerKronnerServiceWorker} from '@/lib/push-client';
 import {ROLE_LABELS,type IdentityInfo,type ShopConfig,type ChargeRow} from '@/components/painel/types';
 import {useCallback,useEffect,useState} from 'react';
 import Link from 'next/link';
@@ -16,7 +18,7 @@ import {
   LayoutDashboard,CalendarDays,Users,Wallet,Bell,Settings,LogOut,Plus,
   ArrowUpRight,Copy,ChevronRight,ChevronLeft,Check,Scissors,Menu,FileBarChart,
   Repeat,HelpCircle,User,Clock,Tag,Coffee,X,CheckCircle2,XCircle,MessageCircle,
-  RefreshCw,Trash2,Lock,UserCog
+  RefreshCw,Trash2,Lock,UserCog,CalendarPlus,CalendarX2,Sun
 } from 'lucide-react';
 import {useApi} from '@/lib/supabase';
 import {useAuth,useClerk,useSession,useUser} from '@clerk/react';
@@ -117,7 +119,32 @@ export default function Dashboard(){
     [from,F]=useState(today().slice(0,8)+'01'),
     [to,TT]=useState(today()),
     [booking,BO]=useState<Row>({services:[],day:today(),period:'afternoon',start:'',client:'',name:'',phone:''}),
-    [slots,SL]=useState<Row[]>([]);
+    [slots,SL]=useState<Row[]>([]),
+    [storedNotices,setStoredNotices]=useState<Row[]>([]);
+
+  const loadNotifications=useCallback(async()=>{
+    try{
+      const res=await call('notify:list');
+      if(Array.isArray(res?.items))setStoredNotices(res.items);
+    }catch{
+      // Non-blocking until DB migration is live
+    }
+  },[call]);
+
+  const getClerkToken=useCallback(async()=>{
+    if(!session)return null;
+    return session.getToken({template:'kroner_claims'}).catch(()=>session.getToken());
+  },[session]);
+
+  useEffect(()=>{
+    void registerKronnerServiceWorker();
+    try{
+      const initialTab=new URLSearchParams(window.location.search).get('tab');
+      if(initialTab && ['overview','agenda','clients','monthly','team','finance','reports','notices','share','settings'].includes(initialTab)){
+        T(initialTab);
+      }
+    }catch{}
+  },[]);
 
   async function load(){
     try{
@@ -154,6 +181,7 @@ export default function Dashboard(){
       N(d.shop.name);
       setSettingsDirty(false);
       ST(d.shop.cfg.setupStep||0);
+      void loadNotifications();
       if(!d.shop.active){
         T('settings');
         const tourKey='kroner:tour-seen:'+d.shop.id;
@@ -176,6 +204,17 @@ export default function Dashboard(){
     if(isSignedIn&&session)load();
     else if(!isSignedIn)location.assign('/entrar?next=/painel');
   },[isLoaded,sessionLoaded,isSignedIn,session?.id]);
+
+  useEffect(()=>{
+    if(!data?.shop.active)return;
+    const tick=()=>{if(document.visibilityState==='visible')void loadNotifications();};
+    const timer=window.setInterval(tick,45000);
+    document.addEventListener('visibilitychange',tick);
+    return()=>{
+      window.clearInterval(timer);
+      document.removeEventListener('visibilitychange',tick);
+    };
+  },[data?.shop.active,loadNotifications]);
 
   useEffect(()=>{
     const prof=booking.professional||ownerChair||data?.professionals?.[0]?.id;
@@ -276,7 +315,20 @@ export default function Dashboard(){
       holidayDecision:decision
     });
   }
-  const unreadNoticesCount=notices.filter(n=>!n.holidayDecision).length;
+  const unreadStoredCount=storedNotices.filter(n=>!n.readAt).length;
+  const unreadNoticesCount=notices.filter(n=>!n.holidayDecision).length+unreadStoredCount;
+
+  async function markStoredNoticeRead(id:string,targetTab?:string){
+    setStoredNotices(prev=>prev.map(n=>n.id===id?{...n,readAt:n.readAt||new Date().toISOString()}:n));
+    try{await call('notify:mark_read',{id});}catch{}
+    if(targetTab && targetTab!=='notices')T(targetTab);
+  }
+
+  async function markAllStoredNoticesRead(){
+    const nowIso=new Date().toISOString();
+    setStoredNotices(prev=>prev.map(n=>({...n,readAt:n.readAt||nowIso})));
+    try{await call('notify:mark_all_read');}catch{}
+  }
 
   async function decideHoliday(holidayDate:string,decision:'open'|'closed'){
     const msg=decision==='open'
@@ -1241,41 +1293,102 @@ export default function Dashboard(){
           )}
 
           {tab==='notices'&&(
-            <>
-              <p>Os avisos são internos. Os feriados permanecem listados aqui para você consultar ou alterar sua decisão quando precisar, sem repetir alertas na tela.</p>
-              {notices.map((n,i)=>(
-                <div className={'card notification '+(n.danger?'warning':'')} key={i}>
-                  <Bell size={22}/>
-                  <div>
-                    <h3>{n.title}</h3>
-                    <p>{n.text}</p>
+            <div className="kr-notices-stack">
+              <InstallPushCard
+                call={call}
+                getToken={getClerkToken}
+                onToast={(msg)=>{Toast(msg);setTimeout(()=>Toast(''),4500);}}
+              />
+
+              {storedNotices.length>0&&(
+                <div className="kr-notices-section">
+                  <div className="kr-notices-section-head">
+                    <h3>Agendamentos e resumo diário</h3>
+                    {unreadStoredCount>0&&(
+                      <button type="button" className="btn small" onClick={markAllStoredNoticesRead}>
+                        <Check size={14}/> Marcar todas como lidas
+                      </button>
+                    )}
                   </div>
-                  {n.holiday?(
-                    <div className="actions" style={{margin:0}}>
-                      <button
-                        type="button"
-                        className={'btn '+(n.holidayDecision==='open'?'primary':'')}
-                        disabled={busy}
-                        onClick={()=>decideHoliday(n.holiday,'open')}
-                      >
-                        {n.holidayDecision==='open'?'✓ Vou trabalhar':'Vou trabalhar'}
-                      </button>
-                      <button
-                        type="button"
-                        className={'btn '+(n.holidayDecision==='closed'?'primary':'')}
-                        disabled={busy}
-                        onClick={()=>decideHoliday(n.holiday,'closed')}
-                      >
-                        {n.holidayDecision==='closed'?'✓ Não vou trabalhar':'Não vou trabalhar'}
-                      </button>
-                    </div>
-                  ):(
-                    <button className="btn" onClick={()=>T(n.tab)}>Conferir</button>
-                  )}
+                  {storedNotices.map((n)=>{
+                    const isUnread=!n.readAt;
+                    const Icon=
+                      n.kind==='booking_created'?CalendarPlus
+                      :n.kind==='booking_cancelled'?CalendarX2
+                      :n.kind==='booking_rescheduled'?RefreshCw
+                      :Sun;
+                    const toneCls=
+                      n.kind==='booking_cancelled'?'warning'
+                      :n.kind==='booking_rescheduled'?'info'
+                      :'';
+                    const whenLabel=n.createdAt
+                      ?formatInTimeZone(n.createdAt,tz,'dd/MM · HH:mm')
+                      :'';
+                    return(
+                      <div className={`card notification ${toneCls} ${isUnread?'is-unread':''}`} key={n.id}>
+                        <Icon size={21}/>
+                        <div>
+                          <h3>
+                            {isUnread&&<i className="kr-notice-unread-dot" aria-hidden="true"/>}
+                            {n.title}
+                            {whenLabel&&<span className="kr-notice-time">{whenLabel}</span>}
+                          </h3>
+                          <p>{n.body}</p>
+                        </div>
+                        <button
+                          type="button"
+                          className={'btn '+(isUnread?'primary':'')}
+                          onClick={()=>markStoredNoticeRead(n.id,n.tab||'agenda')}
+                        >
+                          {n.tab==='agenda'?'Ver agenda':'Conferir'}
+                        </button>
+                      </div>
+                    );
+                  })}
                 </div>
-              ))}
-              {!notices.length&&<div className="card"><Empty title="Tudo em dia por aqui." text="Quando algo precisar de atenção, você encontrará o aviso nesta área."/></div>}
-            </>
+              )}
+
+              <div className="kr-notices-section">
+                <div className="kr-notices-section-head">
+                  <h3>Feriados e pendências da barbearia</h3>
+                </div>
+                <p style={{margin:'0 0 8px',color:'var(--muted)',fontSize:13.5}}>
+                  Os feriados permanecem listados aqui para você consultar ou alterar sua decisão quando precisar, sem repetir alertas na tela.
+                </p>
+                {notices.map((n,i)=>(
+                  <div className={'card notification '+(n.danger?'warning':'')} key={i}>
+                    <Bell size={22}/>
+                    <div>
+                      <h3>{n.title}</h3>
+                      <p>{n.text}</p>
+                    </div>
+                    {n.holiday?(
+                      <div className="actions" style={{margin:0}}>
+                        <button
+                          type="button"
+                          className={'btn '+(n.holidayDecision==='open'?'primary':'')}
+                          disabled={busy}
+                          onClick={()=>decideHoliday(n.holiday,'open')}
+                        >
+                          {n.holidayDecision==='open'?'✓ Vou trabalhar':'Vou trabalhar'}
+                        </button>
+                        <button
+                          type="button"
+                          className={'btn '+(n.holidayDecision==='closed'?'primary':'')}
+                          disabled={busy}
+                          onClick={()=>decideHoliday(n.holiday,'closed')}
+                        >
+                          {n.holidayDecision==='closed'?'✓ Não vou trabalhar':'Não vou trabalhar'}
+                        </button>
+                      </div>
+                    ):(
+                      <button className="btn" onClick={()=>T(n.tab)}>Conferir</button>
+                    )}
+                  </div>
+                ))}
+                {!notices.length&&!storedNotices.length&&<div className="card"><Empty title="Tudo em dia por aqui." text="Quando houver novos agendamentos, cancelamentos, feriados ou pendências, você verá nesta área."/></div>}
+              </div>
+            </div>
           )}
 
           {tab==='settings'&&data.shop.active&&(

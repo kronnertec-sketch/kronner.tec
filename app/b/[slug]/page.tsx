@@ -15,8 +15,9 @@ import {
   User,
 } from 'lucide-react';
 import { useApi } from '@/lib/supabase';
-import { useAuth } from '@clerk/react';
+import { useAuth, useSession } from '@clerk/react';
 import { money, phone, today, days } from '@/lib/domain';
+import { notifyAppointmentEvent } from '@/lib/push-client';
 import type { Row } from '@/lib/types';
 import { BrandLogo } from '@/components/BrandLogo';
 
@@ -28,6 +29,7 @@ export default function Booking({ params }: { params: Promise<{ slug: string }> 
   }, []);
   const call = useApi();
   const { isLoaded, isSignedIn } = useAuth();
+  const { session } = useSession();
   const user = isLoaded ? !!isSignedIn : null;
   const [shop, S] = useState<Row | null>(null),
     [selected, V] = useState<string[]>([]),
@@ -131,7 +133,7 @@ export default function Booking({ params }: { params: Promise<{ slug: string }> 
     B(true);
     E('');
     try {
-      await call('book', {
+      const created = await call('book', {
         slug,
         professional: slot.professional || shop?.professional,
         services: selected,
@@ -142,6 +144,12 @@ export default function Booking({ params }: { params: Promise<{ slug: string }> 
         phone: phone(profile.phone),
         request_id: crypto.randomUUID(),
       });
+      if (created?.id && session) {
+        const token = await session
+          .getToken({ template: 'kroner_claims' })
+          .catch(() => session.getToken());
+        void notifyAppointmentEvent(token, String(created.id), 'booking_created');
+      }
       OK(true);
       sessionStorage.removeItem('booking:' + slug);
     } catch (e) {

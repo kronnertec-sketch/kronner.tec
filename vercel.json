@@ -1,0 +1,19 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "functions": {
+    "app/api/notificacoes/resumo-matinal/route.ts": {
+      "experimentalTriggers": [
+        {
+          "type": "schedule/v1beta"
+        }
+      ]
+    }
+  },
+  "schedules": {
+    "morning-summary": {
+      "schedule": "0 8 * * *",
+      "timezone": "America/Sao_Paulo",
+      "function": "api/notificacoes/resumo-matinal"
+    }
+  }
+}
