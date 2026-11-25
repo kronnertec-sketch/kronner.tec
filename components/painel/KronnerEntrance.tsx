@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { BrandLogo } from '@/components/BrandLogo';
 
 type KronnerEntranceProps = {
   /** Whether the underlying panel data is still loading */
@@ -17,46 +18,47 @@ const WORDMARK_LETTERS = [
   {
     key: 'k',
     d: 'M172 1556H530V709L942 1120H1358L811 606L1401 0H967L530 467V0H172Z',
-    tx: '119.000',
+    tx: '9',
   },
   {
     key: 'r1',
     d: 'M1004 815Q957 837 910.5 847.5Q864 858 817 858Q679 858 604.5 769.5Q530 681 530 516V0H172V1120H530V936Q599 1046 688.5 1096.5Q778 1147 903 1147Q921 1147 942.0 1145.5Q963 1144 1003 1139Z',
-    tx: '169.802',
+    tx: '59.802',
   },
   {
     key: 'o',
     d: 'M705 891Q586 891 523.5 805.5Q461 720 461 559Q461 398 523.5 312.5Q586 227 705 227Q822 227 884.0 312.5Q946 398 946 559Q946 720 884.0 805.5Q822 891 705 891ZM705 1147Q994 1147 1156.5 991.0Q1319 835 1319 559Q1319 283 1156.5 127.0Q994 -29 705 -29Q415 -29 251.5 127.0Q88 283 88 559Q88 835 251.5 991.0Q415 1147 705 1147Z',
-    tx: '207.026',
+    tx: '97.026',
   },
   {
     key: 'n1',
     d: 'M1298 682V0H938V111V522Q938 667 931.5 722.0Q925 777 909 803Q888 838 852.0 857.5Q816 877 770 877Q658 877 594.0 790.5Q530 704 530 551V0H172V1120H530V956Q611 1054 702.0 1100.5Q793 1147 903 1147Q1097 1147 1197.5 1028.0Q1298 909 1298 682Z',
-    tx: '259.564',
+    tx: '149.564',
   },
   {
     key: 'n2',
     d: 'M1298 682V0H938V111V522Q938 667 931.5 722.0Q925 777 909 803Q888 838 852.0 857.5Q816 877 770 877Q658 877 594.0 790.5Q530 704 530 551V0H172V1120H530V956Q611 1054 702.0 1100.5Q793 1147 903 1147Q1097 1147 1197.5 1028.0Q1298 909 1298 682Z',
-    tx: '314.070',
+    tx: '204.070',
   },
   {
     key: 'e',
     d: 'M1290 563V461H453Q466 335 544.0 272.0Q622 209 762 209Q875 209 993.5 242.5Q1112 276 1237 344V68Q1110 20 983.0 -4.5Q856 -29 729 -29Q425 -29 256.5 125.5Q88 280 88 559Q88 833 253.5 990.0Q419 1147 709 1147Q973 1147 1131.5 988.0Q1290 829 1290 563ZM922 682Q922 784 862.5 846.5Q803 909 707 909Q603 909 538.0 850.5Q473 792 457 682Z',
-    tx: '368.576',
+    tx: '258.576',
   },
   {
     key: 'r2',
     d: 'M1004 815Q957 837 910.5 847.5Q864 858 817 858Q679 858 604.5 769.5Q530 681 530 516V0H172V1120H530V936Q599 1046 688.5 1096.5Q778 1147 903 1147Q921 1147 942.0 1145.5Q963 1144 1003 1139Z',
-    tx: '420.420',
+    tx: '310.420',
   },
 ] as const;
 
 /**
- * Branded Kronner entrance (~1.4s):
+ * Branded Kronner entrance (~1.55s) built with animate/RECIPES.md:
  * 1. Full-screen Kronner Deep Botanical Emerald (#0D6E52)
- * 2. Official K mark appears cleanly in the center
- * 3. Wordmark "kronner" writes progressively letter-by-letter beside the K
- * 4. Smoothly dissolves straight into the panel once data is ready
+ * 2. Official K mark enters first via HTML-wrapped GPU transform + opacity
+ * 3. Wordmark "kronner" writes progressively left-to-right via clip-path wipe + letter opacity stagger
+ * 4. Smoothly dissolves into the panel once data is ready (works reliably on Desktop & Mobile,
+ *    including Windows laptops with reduced-motion enabled via gentler opacity-only sequence)
  */
 export function KronnerEntrance({ loading = false, onComplete, hasError }: KronnerEntranceProps) {
   const [exiting, setExiting] = useState(false);
@@ -74,7 +76,7 @@ export function KronnerEntrance({ loading = false, onComplete, hasError }: Kronn
       typeof window !== 'undefined' &&
       window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-    const timer = window.setTimeout(() => setMinTimePassed(true), reduced ? 320 : 1280);
+    const timer = window.setTimeout(() => setMinTimePassed(true), reduced ? 980 : 1480);
     return () => window.clearTimeout(timer);
   }, [onComplete]);
 
@@ -99,44 +101,31 @@ export function KronnerEntrance({ loading = false, onComplete, hasError }: Kronn
       role="presentation"
       aria-hidden="true"
     >
-      <div className="kr-splash-stage">
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 472 100"
-          className="kr-splash-svg"
-          role="img"
-          aria-label="Kronner"
-        >
-          <g
-            className="kr-splash-mark"
-            fill="none"
-            strokeWidth="8"
-            strokeLinecap="round"
-            strokeLinejoin="round"
+      <div className="kr-splash-lockup">
+        <div className="kr-splash-mark-wrap">
+          <BrandLogo variant="light" height={56} markOnly />
+        </div>
+        <div className="kr-splash-word-wrap">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 365 100"
+            className="kr-splash-word-svg"
+            role="img"
+            aria-label="kronner"
           >
-            <path
-              stroke="#F2F5F3"
-              d="M78.103,18.788 L76.636,17.527 L75.112,16.334 L73.535,15.213 L71.907,14.166 L70.234,13.195 L68.517,12.302 L66.761,11.489 L64.969,10.758 L63.146,10.110 L61.295,9.547 L59.419,9.070 L57.524,8.679 L55.613,8.377 L53.690,8.162 L51.759,8.037 L49.824,8.000 L47.890,8.053 L45.960,8.195 L44.039,8.425 L42.130,8.744 L40.238,9.150 L38.367,9.643 L36.520,10.222 L34.702,10.885 L32.917,11.631 L31.168,12.459 L29.459,13.366 L27.793,14.351 L26.175,15.412 L24.607,16.546 L23.093,17.751 L21.636,19.024 L20.239,20.364 L18.906,21.766 L17.638,23.228 L16.440,24.747 L15.312,26.320 L14.258,27.943 L13.280,29.612 L12.380,31.325 L11.560,33.078 L10.821,34.866 L10.166,36.687 L9.595,38.536 L9.110,40.409 L8.711,42.303 L8.401,44.213 L8.178,46.135 L8.045,48.065 L8.000,50.000 L8.045,51.935 L8.178,53.865 L8.401,55.787 L8.711,57.697 L9.110,59.591 L9.595,61.464 L10.166,63.313 L10.821,65.134 L11.560,66.922 L12.380,68.675 L13.280,70.388 L14.258,72.057 L15.312,73.680 L16.440,75.253 L17.638,76.772 L18.906,78.234 L20.239,79.636 L21.636,80.976 L23.093,82.249 L24.607,83.454 L26.175,84.588 L27.793,85.649 L29.459,86.634 L31.168,87.541 L32.917,88.369 L34.702,89.115 L36.520,89.778 L38.367,90.357 L40.238,90.850 L42.130,91.256 L44.039,91.575 L45.960,91.805 L47.890,91.947 L49.824,92.000 L51.759,91.963 L53.690,91.838 L55.613,91.623 L57.524,91.321 L59.419,90.930 L61.295,90.453 L63.146,89.890 L64.969,89.242 L66.761,88.511 L68.517,87.698 L70.234,86.805 L71.907,85.834 L73.535,84.787 L75.112,83.666 L76.636,82.473 L78.103,81.212"
-            />
-            <path stroke="#F2F5F3" d="M39 25V75" />
-            <path stroke="#1EC28F" d="M39 50L63 26" />
-            <path stroke="#E2AA4F" d="M39 50L66 76" />
-          </g>
-          <g fill="#F2F5F3">
-            {WORDMARK_LETTERS.map((letter, idx) => (
-              <g
-                key={letter.key}
-                className="kr-splash-letter"
-                style={{ animationDelay: `${360 + idx * 75}ms` }}
-              >
+            <g fill="#F2F5F3">
+              {WORDMARK_LETTERS.map((letter, idx) => (
                 <path
+                  key={letter.key}
+                  className="kr-splash-letter"
+                  style={{ animationDelay: `${360 + idx * 80}ms` }}
                   d={letter.d}
                   transform={`translate(${letter.tx} 84) scale(0.038574 -0.038574)`}
                 />
-              </g>
-            ))}
-          </g>
-        </svg>
+              ))}
+            </g>
+          </svg>
+        </div>
       </div>
     </div>
   );

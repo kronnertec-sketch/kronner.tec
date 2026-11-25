@@ -126,12 +126,12 @@ export function HeroDashboardPreview() {
                 <span className="kl2-app-pill-tag">89 na semana</span>
               </div>
               <div className="kl2-app-bars">
-                {HERO_BARS.map(bar => (
+                {HERO_BARS.map((bar, idx) => (
                   <div key={bar.day} className="kl2-app-bar-col">
                     <div className="kl2-app-bar-track">
                       <div
-                        className={`kl2-app-bar-fill ${bar.active ? 'is-peak' : ''}`}
-                        style={{ height: `${bar.height}%` }}
+                        className={`kl2-app-bar-fill kl2-bar-grow ${bar.active ? 'is-peak' : ''}`}
+                        style={{ height: `${bar.height}%`, animationDelay: `${360 + idx * 55}ms` }}
                       />
                     </div>
                     <span>{bar.day}</span>
@@ -208,12 +208,12 @@ export function MobileHeroDashboardPreview() {
 
       <div className="kl2-mob-mini-chart">
         <div className="kl2-app-bars is-compact">
-          {HERO_BARS.map(bar => (
+          {HERO_BARS.map((bar, idx) => (
             <div key={bar.day} className="kl2-app-bar-col">
               <div className="kl2-app-bar-track">
                 <div
-                  className={`kl2-app-bar-fill ${bar.active ? 'is-peak' : ''}`}
-                  style={{ height: `${bar.height}%` }}
+                  className={`kl2-app-bar-fill kl2-bar-grow ${bar.active ? 'is-peak' : ''}`}
+                  style={{ height: `${bar.height}%`, animationDelay: `${320 + idx * 50}ms` }}
                 />
               </div>
               <span>{bar.day}</span>

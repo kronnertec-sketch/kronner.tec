@@ -74,13 +74,6 @@ export function DesktopLanding() {
   const revealRefs = useRef<Array<HTMLElement | null>>([]);
 
   useEffect(() => {
-    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (reduced) {
-      setStatementProgress(1);
-      revealRefs.current.forEach(el => el?.classList.add('is-visible'));
-      return;
-    }
-
     const observer = new IntersectionObserver(
       entries => {
         for (const entry of entries) {
@@ -90,7 +83,7 @@ export function DesktopLanding() {
           }
         }
       },
-      { threshold: 0.16, rootMargin: '0px 0px -48px 0px' }
+      { threshold: 0.14, rootMargin: '0px 0px -40px 0px' }
     );
 
     revealRefs.current.forEach(el => {
@@ -102,7 +95,7 @@ export function DesktopLanding() {
       if (!el) return;
       const rect = el.getBoundingClientRect();
       const vh = window.innerHeight;
-      const raw = (vh * 0.82 - rect.top) / (vh * 0.58);
+      const raw = (vh * 0.84 - rect.top) / (vh * 0.56);
       setStatementProgress(Math.max(0, Math.min(1, raw)));
     };
 
@@ -188,7 +181,7 @@ export function DesktopLanding() {
 
             <div className="kl2-showcase-grid">
               <div className="kl2-feature-rail" role="tablist" aria-label="Principais funções">
-                {FEATURES.map(item => {
+                {FEATURES.map((item, idx) => {
                   const Icon = item.icon;
                   const active = activeFeature === item.id;
                   return (
@@ -197,7 +190,8 @@ export function DesktopLanding() {
                       type="button"
                       role="tab"
                       aria-selected={active}
-                      className={`kl2-feature-item ${active ? 'is-active' : ''}`}
+                      className={`kl2-feature-item kl2-stagger ${active ? 'is-active' : ''}`}
+                      style={{ transitionDelay: `${idx * 55}ms` }}
                       onClick={() => setActiveFeature(item.id)}
                     >
                       <span className="kl2-feature-icon">

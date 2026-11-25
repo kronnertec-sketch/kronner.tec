@@ -6209,7 +6209,7 @@ textarea {
 @keyframes krSplashMarkIn {
   from {
     opacity: 0;
-    transform: scale(0.82);
+    transform: scale(0.88);
   }
   to {
     opacity: 1;
@@ -6217,14 +6217,21 @@ textarea {
   }
 }
 
-@keyframes krSplashLetterIn {
+@keyframes krSplashWordReveal {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+@keyframes krSplashLetterFade {
   from {
     opacity: 0;
-    transform: translateY(7px);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
   }
 }
 
@@ -6237,7 +6244,7 @@ textarea {
   place-items: center;
   padding: 24px;
   opacity: 1;
-  transition: opacity 380ms var(--ease-out-kr), transform 380ms var(--ease-out-kr);
+  transition: opacity 380ms cubic-bezier(0.23, 1, 0.32, 1), transform 380ms cubic-bezier(0.23, 1, 0.32, 1);
 }
 
 .kr-splash--exit {
@@ -6246,35 +6253,59 @@ textarea {
   pointer-events: none;
 }
 
-.kr-splash-stage {
-  display: flex;
+.kr-splash-lockup {
+  display: inline-flex;
   align-items: center;
-  justify-content: center;
-  width: 100%;
+  gap: 10px;
+  max-width: 82vw;
 }
 
-.kr-splash-svg {
-  width: min(296px, 74vw);
-  height: auto;
-  overflow: visible;
+.kr-splash-mark-wrap {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  animation: krSplashMarkIn 380ms cubic-bezier(0.23, 1, 0.32, 1) both;
 }
 
-.kr-splash-mark {
-  transform-box: fill-box;
-  transform-origin: center;
-  animation: krSplashMarkIn 380ms var(--ease-out-kr) both;
+.kr-splash-word-wrap {
+  display: inline-flex;
+  align-items: center;
+  overflow: hidden;
+  animation: krSplashWordReveal 680ms cubic-bezier(0.23, 1, 0.32, 1) 340ms both;
+}
+
+.kr-splash-word-svg {
+  height: 56px;
+  width: auto;
+  max-width: 60vw;
+  display: block;
 }
 
 .kr-splash-letter {
   opacity: 0;
-  animation: krSplashLetterIn 260ms var(--ease-out-kr) both;
+  animation: krSplashLetterFade 260ms cubic-bezier(0.23, 1, 0.32, 1) both;
+}
+
+@media (max-width: 520px) {
+  .kr-splash-mark-wrap svg,
+  .kr-splash-word-svg {
+    height: 44px;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .kr-splash-mark,
-  .kr-splash-letter {
+  /* Gentler opacity-only reveal (animate skill rule: gentler, not zero) */
+  .kr-splash-mark-wrap {
+    animation: krSplashLetterFade 320ms ease-out both;
+  }
+  .kr-splash-word-wrap {
     animation: none;
-    opacity: 1;
+    clip-path: inset(0 0 0 0);
+  }
+  .kr-splash-letter {
+    animation: krSplashLetterFade 240ms ease-out both;
+  }
+  .kr-splash--exit {
     transform: none;
   }
 }
@@ -7040,47 +7071,92 @@ textarea {
 @keyframes kl2Enter {
   from {
     opacity: 0;
-    transform: translateY(14px) scale(0.985);
+    transform: translateY(18px) scale(0.98);
+    filter: blur(4px);
   }
   to {
     opacity: 1;
     transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+
+@keyframes kl2BarGrow {
+  from {
+    opacity: 0.4;
+    transform: scaleY(0.16);
+  }
+  to {
+    opacity: 1;
+    transform: scaleY(1);
   }
 }
 
 @keyframes kl2StageSwap {
   from {
     opacity: 0;
-    transform: translateY(8px) scale(0.99);
+    transform: translateY(10px) scale(0.985);
+    filter: blur(3px);
   }
   to {
     opacity: 1;
     transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+
+@keyframes kl2GentleFade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
   }
 }
 
 .kl2-enter {
-  animation: kl2Enter 560ms var(--kl2-ease-out) both;
+  animation: kl2Enter 620ms var(--kl2-ease-out) both;
 }
 
 .kl2-d1 { animation-delay: 40ms; }
-.kl2-d2 { animation-delay: 110ms; }
-.kl2-d3 { animation-delay: 180ms; }
-.kl2-d4 { animation-delay: 250ms; }
+.kl2-d2 { animation-delay: 120ms; }
+.kl2-d3 { animation-delay: 190ms; }
+.kl2-d4 { animation-delay: 270ms; }
+
+.kl2-bar-grow {
+  transform-origin: bottom center;
+  animation: kl2BarGrow 580ms var(--kl2-ease-out) both;
+}
 
 .kl2-reveal {
   opacity: 0;
-  transform: translateY(18px);
-  transition: opacity 520ms var(--kl2-ease-out), transform 520ms var(--kl2-ease-out);
+  transform: translateY(24px) scale(0.99);
+  transition: opacity 580ms var(--kl2-ease-out), transform 580ms var(--kl2-ease-out);
 }
 
 .kl2-reveal.is-visible {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+.kl2-reveal .kl2-stagger {
+  opacity: 0;
+  transform: translateY(14px);
+  transition:
+    opacity 460ms var(--kl2-ease-out),
+    transform 460ms var(--kl2-ease-out),
+    background-color 180ms ease,
+    border-color 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.kl2-reveal.is-visible .kl2-stagger {
   opacity: 1;
   transform: translateY(0);
 }
 
 .kl2-showcase-stage {
-  animation: kl2StageSwap 240ms var(--kl2-ease-out) both;
+  animation: kl2StageSwap 280ms var(--kl2-ease-out) both;
 }
 
 /* --- Unified Button System --- */
@@ -8581,21 +8657,21 @@ textarea {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .kl2-enter,
+  /* Gentler opacity-only transitions (animate skill: gentler, not zero) */
+  .kl2-enter {
+    animation: kl2GentleFade 360ms ease-out both;
+    filter: none;
+  }
+  .kl2-bar-grow {
+    animation: kl2GentleFade 360ms ease-out both;
+  }
   .kl2-showcase-stage {
-    animation: none;
-    opacity: 1;
+    animation: kl2GentleFade 220ms ease-out both;
+    filter: none;
+  }
+  .kl2-reveal,
+  .kl2-reveal .kl2-stagger {
     transform: none;
-  }
-  .kl2-reveal {
-    opacity: 1;
-    transform: none;
-    transition: none;
-  }
-  .kl2-word {
-    color: #f2f5f3;
-  }
-  .kl2-word.is-brass {
-    color: var(--kl2-brass-light);
+    transition: opacity 340ms ease-out;
   }
 }

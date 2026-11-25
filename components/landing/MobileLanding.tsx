@@ -50,52 +50,67 @@ const MOBILE_FEATURES: Array<{
   },
 ];
 
+const MOB_STATEMENT_WORDS: Array<{ text: string; tone?: 'brass' }> = [
+  { text: 'Menos' },
+  { text: 'tempo' },
+  { text: 'respondendo' },
+  { text: 'WhatsApp.' },
+  { text: 'Mais' },
+  { text: 'cadeiras' },
+  { text: 'cheias' },
+  { text: 'e' },
+  { text: 'caixa' },
+  { text: 'fechado' },
+  { text: 'sem' },
+  { text: 'planilha.', tone: 'brass' },
+];
+
 export function MobileLanding() {
   const [activeFeature, setActiveFeature] = useState<DemoFeatureId>('agenda');
   const [showStickyCta, setShowStickyCta] = useState(false);
+  const [statementProgress, setStatementProgress] = useState(0);
   const heroCtaRef = useRef<HTMLDivElement | null>(null);
+  const statementRef = useRef<HTMLElement | null>(null);
   const revealRefs = useRef<Array<HTMLElement | null>>([]);
 
   useEffect(() => {
-    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (reduced) {
-      revealRefs.current.forEach(el => el?.classList.add('is-visible'));
-    } else {
-      const revealObserver = new IntersectionObserver(
-        entries => {
-          for (const entry of entries) {
-            if (entry.isIntersecting) {
-              entry.target.classList.add('is-visible');
-              revealObserver.unobserve(entry.target);
-            }
+    const revealObserver = new IntersectionObserver(
+      entries => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('is-visible');
+            revealObserver.unobserve(entry.target);
           }
-        },
-        { threshold: 0.14 }
-      );
-      revealRefs.current.forEach(el => {
-        if (el) revealObserver.observe(el);
-      });
-
-      const ctaObserver = new IntersectionObserver(
-        ([entry]) => {
-          setShowStickyCta(!entry.isIntersecting);
-        },
-        { threshold: 0 }
-      );
-      if (heroCtaRef.current) ctaObserver.observe(heroCtaRef.current);
-
-      return () => {
-        revealObserver.disconnect();
-        ctaObserver.disconnect();
-      };
-    }
+        }
+      },
+      { threshold: 0.12 }
+    );
+    revealRefs.current.forEach(el => {
+      if (el) revealObserver.observe(el);
+    });
 
     const ctaObserver = new IntersectionObserver(
       ([entry]) => setShowStickyCta(!entry.isIntersecting),
       { threshold: 0 }
     );
     if (heroCtaRef.current) ctaObserver.observe(heroCtaRef.current);
-    return () => ctaObserver.disconnect();
+
+    const onScroll = () => {
+      const el = statementRef.current;
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      const vh = window.innerHeight;
+      const raw = (vh * 0.86 - rect.top) / (vh * 0.52);
+      setStatementProgress(Math.max(0, Math.min(1, raw)));
+    };
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+
+    return () => {
+      revealObserver.disconnect();
+      ctaObserver.disconnect();
+      window.removeEventListener('scroll', onScroll);
+    };
   }, []);
 
   const currentFeature = MOBILE_FEATURES.find(f => f.id === activeFeature) || MOBILE_FEATURES[0];
@@ -172,17 +187,25 @@ export function MobileLanding() {
           </div>
         </section>
 
-        {/* MOBILE EMERALD STATEMENT */}
+        {/* MOBILE EMERALD STATEMENT (SCROLL-SCRUBBED) */}
         <section
-          className="kl2-mob-statement kl2-reveal"
-          ref={el => {
-            revealRefs.current[1] = el;
-          }}
+          ref={statementRef}
+          className="kl2-mob-statement"
           aria-label="Proposta da Kronner"
         >
           <p>
-            Menos tempo respondendo WhatsApp.{' '}
-            <span>Mais cadeiras cheias e caixa fechado sem planilha.</span>
+            {MOB_STATEMENT_WORDS.map((word, idx) => {
+              const threshold = idx / MOB_STATEMENT_WORDS.length;
+              const lit = statementProgress >= threshold * 0.88;
+              return (
+                <span
+                  key={idx}
+                  className={`kl2-word ${lit ? 'is-lit' : ''} ${word.tone === 'brass' ? 'is-brass' : ''}`}
+                >
+                  {word.text}{' '}
+                </span>
+              );
+            })}
           </p>
         </section>
 
