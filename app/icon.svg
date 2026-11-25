@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="Kronner">
+  <defs>
+    <linearGradient id="krTile" x1="6" y1="4" x2="58" y2="60" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#179E77" />
+      <stop offset="55%" stop-color="#0E7658" />
+      <stop offset="100%" stop-color="#084C39" />
+    </linearGradient>
+  </defs>
+  <rect x="2" y="2" width="60" height="60" rx="15" fill="url(#krTile)" />
+  <rect x="3" y="3" width="58" height="58" rx="14" fill="none" stroke="#FFFFFF" stroke-opacity="0.22" stroke-width="2" />
+  <g fill="none" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round">
+    <path stroke="#FFFFFF" d="M 45.5 17.0 A 20.2 20.2 0 1 0 45.5 47.0" />
+    <path stroke="#FFFFFF" d="M 26.8 20.0 V 44.0" />
+    <path stroke="#86F7D0" d="M 26.8 32.0 L 38.4 20.5" />
+    <path stroke="#F5BF5A" d="M 26.8 32.0 L 39.8 44.5" />
+  </g>
+</svg>

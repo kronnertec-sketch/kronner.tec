@@ -7,13 +7,10 @@ export const metadata: Metadata = {
   title: 'Kronner · Tempo para o seu talento',
   description:
     'Agenda por cadeira, link público para clientes, feriados automáticos pelo CEP e financeiro com comissões para barbearias.',
-  icons: {
-    icon: '/kroner.svg',
-  },
 };
 
 export const viewport: Viewport = {
-  themeColor: '#0B0E10',
+  themeColor: '#0D6E52',
   width: 'device-width',
   initialScale: 1,
 };

@@ -131,8 +131,11 @@ export function MobileLanding() {
           <BrandLogo variant="dark" height={24} />
         </Link>
         <div className="kl2-mob-header-actions">
-          <Link href="/entrar" className="kl2-btn kl2-btn-ghost kl2-btn-sm">
+          <Link href="/entrar" className="kl2-btn kl2-btn-ghost kl2-btn-xs">
             Entrar
+          </Link>
+          <Link href="/entrar?mode=signup" className="kl2-btn kl2-btn-primary kl2-btn-xs">
+            Testar grátis
           </Link>
         </div>
       </header>
@@ -163,9 +166,14 @@ export function MobileLanding() {
           </p>
 
           <div ref={heroCtaRef} className="kl2-mob-hero-actions kl2-enter kl2-d3">
-            <Link href="/entrar?mode=signup" className="kl2-btn kl2-btn-primary kl2-btn-block">
-              Começar 15 dias grátis <ArrowRight size={16} />
+            <Link href="/entrar?mode=signup" className="kl2-btn kl2-btn-primary kl2-btn-cta kl2-btn-block">
+              Começar 15 dias grátis <ArrowRight size={16} className="kl2-btn-arrow" />
             </Link>
+            <p className="kl2-cta-reassurance is-mobile">
+              <span><Check size={12} /> Sem cartão</span>
+              <span><Check size={12} /> Pronto em 2 min</span>
+              <span><Check size={12} /> Cancele quando quiser</span>
+            </p>
           </div>
 
           <div className="kl2-mob-hero-stage kl2-enter kl2-d4">
@@ -208,6 +216,10 @@ export function MobileLanding() {
           <div className="kl2-showcase-stage" key={activeFeature}>
             <InteractiveFeatureDemo feature={activeFeature} />
           </div>
+
+          <Link href="/entrar?mode=signup" className="kl2-btn kl2-btn-primary kl2-btn-cta kl2-btn-block kl2-mob-demo-cta">
+            Testar grátis na minha barbearia <ArrowRight size={15} className="kl2-btn-arrow" />
+          </Link>
         </section>
 
         {/* MOBILE EMERALD STATEMENT + BARBERSHOP STATION PHOTO */}
@@ -241,6 +253,11 @@ export function MobileLanding() {
               );
             })}
           </p>
+          <div className="kl2-mob-statement-cta">
+            <Link href="/entrar?mode=signup" className="kl2-btn kl2-btn-light kl2-btn-block">
+              Começar 15 dias grátis <ArrowRight size={16} className="kl2-btn-arrow" />
+            </Link>
+          </div>
         </section>
 
         {/* MOBILE PRICING */}
@@ -271,12 +288,12 @@ export function MobileLanding() {
               <li><Check size={15} /> Feriados pelo CEP · 15 dias grátis sem cartão</li>
             </ul>
 
-            <Link href="/entrar?mode=signup" className="kl2-btn kl2-btn-primary kl2-btn-block">
-              Começar 15 dias grátis <ArrowRight size={16} />
+            <Link href="/entrar?mode=signup" className="kl2-btn kl2-btn-primary kl2-btn-cta kl2-btn-block">
+              Começar 15 dias grátis <ArrowRight size={16} className="kl2-btn-arrow" />
             </Link>
-            <Link href="/entrar" className="kl2-btn kl2-btn-outline kl2-btn-block">
-              Entrar na minha conta
-            </Link>
+            <p className="kl2-price-signin">
+              Já tem conta? <Link href="/entrar">Entrar no painel</Link>
+            </p>
           </div>
         </section>
       </main>
@@ -299,11 +316,11 @@ export function MobileLanding() {
       {/* STICKY THUMB CONVERSION BAR */}
       <div className={`kl2-mob-sticky ${showStickyCta ? 'is-visible' : ''}`}>
         <div>
-          <strong>15 dias grátis</strong>
-          <small>Sem cartão de crédito</small>
+          <strong><i className="kl2-live-dot kl2-sticky-dot" />15 dias grátis</strong>
+          <small>Sem cartão · Pronto em 2 min</small>
         </div>
         <Link href="/entrar?mode=signup" className="kl2-btn kl2-btn-primary kl2-btn-sm">
-          Testar agora <ArrowRight size={14} />
+          Testar agora <ArrowRight size={14} className="kl2-btn-arrow" />
         </Link>
       </div>
     </div>

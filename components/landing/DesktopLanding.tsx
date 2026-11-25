@@ -144,7 +144,7 @@ export function DesktopLanding() {
               Entrar
             </Link>
             <Link href="/entrar?mode=signup" className="kl2-btn kl2-btn-primary">
-              Começar 15 dias grátis
+              Começar 15 dias grátis <ArrowRight size={14} className="kl2-btn-arrow" />
             </Link>
           </div>
         </div>
@@ -164,13 +164,18 @@ export function DesktopLanding() {
                   em um painel feito para o dia a dia da barbearia. 15 dias grátis sem cartão.
                 </p>
                 <div className="kl2-hero-actions kl2-enter kl2-d3">
-                  <Link href="/entrar?mode=signup" className="kl2-btn kl2-btn-primary kl2-btn-lg">
-                    Começar 15 dias grátis <ArrowRight size={16} />
+                  <Link href="/entrar?mode=signup" className="kl2-btn kl2-btn-primary kl2-btn-cta kl2-btn-lg">
+                    Começar 15 dias grátis <ArrowRight size={16} className="kl2-btn-arrow" />
                   </Link>
                   <a href="#sistema" className="kl2-btn kl2-btn-outline kl2-btn-lg">
                     Testar o sistema abaixo
                   </a>
                 </div>
+                <p className="kl2-cta-reassurance kl2-enter kl2-d3">
+                  <span><Check size={13} /> Sem cartão de crédito</span>
+                  <span><Check size={13} /> Configura em 2 min</span>
+                  <span><Check size={13} /> Cancele quando quiser</span>
+                </p>
               </div>
 
               <div className="kl2-hero-photo-wrap kl2-enter kl2-d3">
@@ -244,6 +249,16 @@ export function DesktopLanding() {
                 </div>
               </div>
             </div>
+
+            <div className="kl2-showcase-cta kl2-stagger" style={{ transitionDelay: '260ms' }}>
+              <div>
+                <strong>Curtiu o painel por dentro?</strong>
+                <span>Teste na sua barbearia por 15 dias sem cadastrar cartão.</span>
+              </div>
+              <Link href="/entrar?mode=signup" className="kl2-btn kl2-btn-primary kl2-btn-cta">
+                Criar minha conta grátis <ArrowRight size={15} className="kl2-btn-arrow" />
+              </Link>
+            </div>
           </div>
         </section>
 
@@ -257,20 +272,28 @@ export function DesktopLanding() {
           aria-label="Proposta da Kronner"
         >
           <div className="kl2-wrap kl2-statement-grid">
-            <p className="kl2-statement-text">
-              {STATEMENT_WORDS.map((word, idx) => {
-                const threshold = idx / STATEMENT_WORDS.length;
-                const lit = statementProgress >= threshold * 0.88;
-                return (
-                  <span
-                    key={idx}
-                    className={`kl2-word ${lit ? 'is-lit' : ''} ${word.tone === 'brass' ? 'is-brass' : ''}`}
-                  >
-                    {word.text}{' '}
-                  </span>
-                );
-              })}
-            </p>
+            <div className="kl2-statement-copy">
+              <p className="kl2-statement-text">
+                {STATEMENT_WORDS.map((word, idx) => {
+                  const threshold = idx / STATEMENT_WORDS.length;
+                  const lit = statementProgress >= threshold * 0.88;
+                  return (
+                    <span
+                      key={idx}
+                      className={`kl2-word ${lit ? 'is-lit' : ''} ${word.tone === 'brass' ? 'is-brass' : ''}`}
+                    >
+                      {word.text}{' '}
+                    </span>
+                  );
+                })}
+              </p>
+              <div className="kl2-statement-actions">
+                <Link href="/entrar?mode=signup" className="kl2-btn kl2-btn-light kl2-btn-lg">
+                  Começar 15 dias grátis <ArrowRight size={16} className="kl2-btn-arrow" />
+                </Link>
+                <span className="kl2-statement-note">Sem cartão · Liberação imediata</span>
+              </div>
+            </div>
             <div className="kl2-photo-frame kl2-from-right" style={{ transitionDelay: '160ms' }}>
               <img
                 src="/images/barbershop-station.jpg"
@@ -336,12 +359,13 @@ export function DesktopLanding() {
               </ul>
 
               <div className="kl2-price-actions">
-                <Link href="/entrar?mode=signup" className="kl2-btn kl2-btn-primary kl2-btn-lg">
-                  Começar 15 dias grátis <ArrowRight size={16} />
+                <Link href="/entrar?mode=signup" className="kl2-btn kl2-btn-primary kl2-btn-cta kl2-btn-block">
+                  Começar 15 dias grátis <ArrowRight size={16} className="kl2-btn-arrow" />
                 </Link>
-                <Link href="/entrar" className="kl2-btn kl2-btn-outline kl2-btn-lg">
-                  Entrar na minha conta
-                </Link>
+                <p className="kl2-price-signin">
+                  Sem cartão de crédito · Já tem conta?{' '}
+                  <Link href="/entrar">Entrar no painel</Link>
+                </p>
               </div>
             </div>
           </div>
