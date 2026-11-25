@@ -72,6 +72,7 @@ export function DesktopLanding() {
   const [statementProgress, setStatementProgress] = useState(0);
   const [scrollProgress, setScrollProgress] = useState(0);
   const [navScrolled, setNavScrolled] = useState(false);
+  const [heroParallax, setHeroParallax] = useState(0);
   const statementRef = useRef<HTMLElement | null>(null);
   const revealRefs = useRef<Array<HTMLElement | null>>([]);
 
@@ -85,7 +86,7 @@ export function DesktopLanding() {
           }
         }
       },
-      { threshold: 0.14, rootMargin: '0px 0px -40px 0px' }
+      { threshold: 0.18, rootMargin: '0px 0px -14% 0px' }
     );
 
     revealRefs.current.forEach(el => {
@@ -95,6 +96,7 @@ export function DesktopLanding() {
     const onScroll = () => {
       const scrollY = window.scrollY;
       setNavScrolled(scrollY > 24);
+      setHeroParallax(Math.min(20, scrollY * 0.04));
       const docHeight = document.documentElement.scrollHeight - window.innerHeight;
       setScrollProgress(docHeight > 0 ? Math.max(0, Math.min(1, scrollY / docHeight)) : 0);
 
@@ -171,7 +173,9 @@ export function DesktopLanding() {
             </div>
 
             <div className="kl2-hero-stage kl2-enter kl2-d4">
-              <HeroDashboardPreview />
+              <div style={{ transform: `translate3d(0, ${-heroParallax}px, 0)`, willChange: 'transform' }}>
+                <HeroDashboardPreview />
+              </div>
             </div>
           </div>
         </section>
@@ -187,8 +191,8 @@ export function DesktopLanding() {
         >
           <div className="kl2-wrap">
             <div className="kl2-section-head">
-              <h2 id="kl2-showcase-title">Veja por dentro antes de criar conta.</h2>
-              <p>Clique nos recursos à esquerda e interaja com as telas reais da Kronner.</p>
+              <h2 id="kl2-showcase-title" className="kl2-mask-reveal">Veja por dentro antes de criar conta.</h2>
+              <p className="kl2-stagger" style={{ transitionDelay: '120ms' }}>Clique nos recursos à esquerda e interaja com as telas reais da Kronner.</p>
             </div>
 
             <div className="kl2-showcase-grid">
@@ -202,8 +206,8 @@ export function DesktopLanding() {
                       type="button"
                       role="tab"
                       aria-selected={active}
-                      className={`kl2-feature-item kl2-stagger ${active ? 'is-active' : ''}`}
-                      style={{ transitionDelay: `${idx * 55}ms` }}
+                      className={`kl2-feature-item kl2-from-left ${active ? 'is-active' : ''}`}
+                      style={{ transitionDelay: `${120 + idx * 90}ms` }}
                       onClick={() => setActiveFeature(item.id)}
                     >
                       <span className="kl2-feature-icon">
@@ -218,8 +222,10 @@ export function DesktopLanding() {
                 })}
               </div>
 
-              <div className="kl2-showcase-stage" key={activeFeature}>
-                <InteractiveFeatureDemo feature={activeFeature} />
+              <div className="kl2-from-right" style={{ transitionDelay: '220ms' }}>
+                <div className="kl2-showcase-stage" key={activeFeature}>
+                  <InteractiveFeatureDemo feature={activeFeature} />
+                </div>
               </div>
             </div>
           </div>
@@ -260,25 +266,25 @@ export function DesktopLanding() {
         >
           <div className="kl2-wrap kl2-pricing-grid">
             <div className="kl2-pricing-copy">
-              <h2 id="kl2-pricing-title">Preço direto para o tamanho da sua barbearia.</h2>
-              <p>
+              <h2 id="kl2-pricing-title" className="kl2-mask-reveal">Preço direto para o tamanho da sua barbearia.</h2>
+              <p className="kl2-from-left" style={{ transitionDelay: '100ms' }}>
                 Comece hoje sem cadastrar cartão. Quando sua equipe crescer, adicione novas cadeiras
                 pelas configurações com valor proporcional.
               </p>
               <ul className="kl2-trust-list">
-                <li className="kl2-stagger" style={{ transitionDelay: '60ms' }}>
+                <li className="kl2-from-left" style={{ transitionDelay: '180ms' }}>
                   <Clock size={16} /> Configuração guiada em poucos minutos
                 </li>
-                <li className="kl2-stagger" style={{ transitionDelay: '120ms' }}>
+                <li className="kl2-from-left" style={{ transitionDelay: '260ms' }}>
                   <ShieldCheck size={16} /> Acesso individual para sócios e colaboradores
                 </li>
-                <li className="kl2-stagger" style={{ transitionDelay: '180ms' }}>
+                <li className="kl2-from-left" style={{ transitionDelay: '340ms' }}>
                   <Check size={16} /> Cancele quando quiser, sem multa
                 </li>
               </ul>
             </div>
 
-            <div className="kl2-pricing-card kl2-stagger" style={{ transitionDelay: '120ms' }}>
+            <div className="kl2-pricing-card kl2-from-right" style={{ transitionDelay: '180ms' }}>
               <div className="kl2-pricing-head">
                 <div>
                   <h3>Plano Principal</h3>

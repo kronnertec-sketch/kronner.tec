@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Bell,
   CalendarDays,
@@ -25,6 +25,49 @@ import { BrandLogo } from '@/components/BrandLogo';
 
 export type DemoFeatureId = 'agenda' | 'booking' | 'finance' | 'holidays';
 
+function useCountUp(target: number, durationMs = 1100, delayMs = 420) {
+  const [value, setValue] = useState(0);
+
+  useEffect(() => {
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduced) {
+      setValue(target);
+      return;
+    }
+
+    let raf = 0;
+    const timeout = window.setTimeout(() => {
+      const start = performance.now();
+      const tick = (now: number) => {
+        const elapsed = now - start;
+        const t = Math.min(1, elapsed / durationMs);
+        // Strong exponential ease-out matching --ease-out
+        const eased = 1 - Math.pow(1 - t, 3.2);
+        setValue(Math.round(target * eased));
+        if (t < 1) {
+          raf = requestAnimationFrame(tick);
+        }
+      };
+      raf = requestAnimationFrame(tick);
+    }, delayMs);
+
+    return () => {
+      window.clearTimeout(timeout);
+      cancelAnimationFrame(raf);
+    };
+  }, [target, durationMs, delayMs]);
+
+  return value;
+}
+
+function formatBrl(amount: number) {
+  return amount.toLocaleString('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+    minimumFractionDigits: 2,
+  });
+}
+
 const HERO_BARS = [
   { day: 'Seg', count: 11, height: 58, active: false },
   { day: 'Ter', count: 14, height: 74, active: false },
@@ -39,6 +82,8 @@ const HERO_BARS = [
  * for the Desktop Hero stage ("como se ela já tivesse funcionando").
  */
 export function HeroDashboardPreview() {
+  const revenue = useCountUp(1240, 1150, 480);
+
   return (
     <div className="kl2-hero-frame" aria-label="Prévia do painel Kronner em funcionamento">
       {/* Real Floating Top Pill Navigation Bar */}
@@ -103,12 +148,12 @@ export function HeroDashboardPreview() {
 
           <div className="kl2-app-bento">
             {/* Emerald Focal Card */}
-            <div className="kl2-app-focal">
+            <div className="kl2-app-focal kl2-sheen">
               <div className="kl2-app-focal-head">
                 <span>Recebidos hoje</span>
                 <span className="kl2-app-focal-badge">+18%</span>
               </div>
-              <div className="kl2-app-focal-value">R$ 1.240,00</div>
+              <div className="kl2-app-focal-value">{formatBrl(revenue)}</div>
               <div className="kl2-app-focal-foot">
                 <span>Pix R$ 780</span>
                 <span>Cartão R$ 340</span>
@@ -189,6 +234,8 @@ export function HeroDashboardPreview() {
  * Compact static dashboard snapshot tailored for Mobile Hero (< 960px).
  */
 export function MobileHeroDashboardPreview() {
+  const revenue = useCountUp(1240, 1100, 420);
+
   return (
     <div className="kl2-mob-hero-frame" aria-label="Prévia do painel Kronner no celular">
       <div className="kl2-mob-app-bar">
@@ -196,12 +243,12 @@ export function MobileHeroDashboardPreview() {
         <span className="kl2-app-avatar">C</span>
       </div>
 
-      <div className="kl2-app-focal is-compact">
+      <div className="kl2-app-focal is-compact kl2-sheen">
         <div className="kl2-app-focal-head">
           <span>Recebidos hoje</span>
           <span className="kl2-app-focal-badge">+18%</span>
         </div>
-        <div className="kl2-app-focal-value">R$ 1.240,00</div>
+        <div className="kl2-app-focal-value">{formatBrl(revenue)}</div>
         <div className="kl2-app-focal-foot">
           <span>19 atendimentos</span>
           <span>Pix R$ 780</span>

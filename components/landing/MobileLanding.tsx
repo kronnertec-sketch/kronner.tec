@@ -84,7 +84,7 @@ export function MobileLanding() {
           }
         }
       },
-      { threshold: 0.12 }
+      { threshold: 0.16, rootMargin: '0px 0px -12% 0px' }
     );
     revealRefs.current.forEach(el => {
       if (el) revealObserver.observe(el);
@@ -167,9 +167,9 @@ export function MobileLanding() {
           }}
           aria-labelledby="kl2-mob-showcase-title"
         >
-          <h2 id="kl2-mob-showcase-title">Toque e teste o sistema agora.</h2>
+          <h2 id="kl2-mob-showcase-title" className="kl2-mask-reveal">Toque e teste o sistema agora.</h2>
 
-          <div className="kl2-mob-pills" role="tablist" aria-label="Principais funções">
+          <div className="kl2-mob-pills kl2-stagger" style={{ transitionDelay: '120ms' }} role="tablist" aria-label="Principais funções">
             {MOBILE_FEATURES.map(item => {
               const Icon = item.icon;
               const active = activeFeature === item.id;
@@ -226,9 +226,9 @@ export function MobileLanding() {
           }}
           aria-labelledby="kl2-mob-pricing-title"
         >
-          <h2 id="kl2-mob-pricing-title">Preço direto, sem surpresa.</h2>
+          <h2 id="kl2-mob-pricing-title" className="kl2-mask-reveal">Preço direto, sem surpresa.</h2>
 
-          <div className="kl2-pricing-card kl2-mob-pricing-card">
+          <div className="kl2-pricing-card kl2-mob-pricing-card kl2-stagger" style={{ transitionDelay: '140ms' }}>
             <div className="kl2-price-tag">
               <strong>R$ 99,90</strong>
               <span>/mês · 1 cadeira completa</span>

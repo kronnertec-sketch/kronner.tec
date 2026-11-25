@@ -86,11 +86,11 @@ export function KronnerEntrance({ loading = false, onComplete, hasError }: Kronn
       setExiting(true);
       const waveStart = window.setTimeout(() => {
         onComplete();
-      }, hasError ? 0 : 140);
+      }, hasError ? 0 : 240);
       const finish = window.setTimeout(() => {
         entranceShownInMemory = true;
         setDone(true);
-      }, 400);
+      }, 420);
       return () => {
         window.clearTimeout(waveStart);
         window.clearTimeout(finish);
