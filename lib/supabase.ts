@@ -30,6 +30,11 @@ export function useApi() {
         if (error) throw new Error(error.message);
         return data;
       }
+      if (action === 'client_profile') {
+        const { data, error } = await client.rpc('kroner_client_profile', payload);
+        if (error) throw new Error(error.message);
+        return data;
+      }
       const { data, error } = await client.rpc(
         action.startsWith('team:')
           ? 'kroner_team'

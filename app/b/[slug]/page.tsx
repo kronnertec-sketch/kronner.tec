@@ -5,31 +5,51 @@ import {
   ArrowRight,
   CalendarDays,
   Check,
+  CheckCircle2,
   Clock,
+  LogOut,
   MapPin,
   Moon,
   Plus,
-  Scissors,
   Sun,
   Sunset,
   User,
+  X,
 } from 'lucide-react';
+import { SignIn, SignUp, useAuth, useClerk, useSession, useUser } from '@clerk/react';
 import { useApi } from '@/lib/supabase';
-import { useAuth, useSession } from '@clerk/react';
 import { money, phone, today, days } from '@/lib/domain';
 import { notifyAppointmentEvent } from '@/lib/push-client';
 import type { Row } from '@/lib/types';
 import { BrandLogo } from '@/components/BrandLogo';
 
+function formatBrPhoneDisplay(raw: string | null | undefined): string {
+  if (!raw) return '';
+  let digits = String(raw).replace(/\D/g, '');
+  if (digits.startsWith('55') && digits.length >= 12) {
+    digits = digits.slice(2);
+  }
+  if (digits.length === 11) {
+    return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+  }
+  if (digits.length === 10) {
+    return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
+  }
+  return digits || String(raw);
+}
+
 export default function Booking({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = use(params);
   const [chair, setChair] = useState<string | null>(null);
+  const [authTab, setAuthTab] = useState<'signup' | 'signin'>('signup');
   useEffect(() => {
     setChair(new URLSearchParams(location.search).get('p') || 'auto');
   }, []);
   const call = useApi();
   const { isLoaded, isSignedIn } = useAuth();
   const { session } = useSession();
+  const { user: clerkUser } = useUser();
+  const { signOut } = useClerk();
   const user = isLoaded ? !!isSignedIn : null;
   const [shop, S] = useState<Row | null>(null),
     [selected, V] = useState<string[]>([]),
@@ -41,7 +61,8 @@ export default function Booking({ params }: { params: Promise<{ slug: string }> 
     [error, E] = useState(''),
     [busy, B] = useState(false),
     [success, OK] = useState(false),
-    [profile, F] = useState({ name: '', phone: '' });
+    [profile, F] = useState({ name: '', phone: '' }),
+    [profileSaved, setProfileSaved] = useState(false);
 
   useEffect(() => {
     if (!chair) return;
@@ -62,6 +83,41 @@ export default function Booking({ params }: { params: Promise<{ slug: string }> 
       current = false;
     };
   }, [slug, chair, call]);
+
+  // Auto-fill client name & phone from saved DB profile on 2nd+ visits (always editable)
+  useEffect(() => {
+    if (!user || !session) return;
+    let alive = true;
+    call('client_profile', { p_slug: slug })
+      .then((res) => {
+        if (!alive) return;
+        if (res?.found) {
+          const savedName = typeof res.name === 'string' ? res.name : '';
+          const savedPhone = formatBrPhoneDisplay(res.phone);
+          setProfileSaved(Boolean(savedName || savedPhone));
+          F((prev) => ({
+            name: prev.name || savedName,
+            phone: prev.phone || savedPhone,
+          }));
+        } else {
+          setProfileSaved(false);
+          const fallbackName = clerkUser?.fullName?.trim() || clerkUser?.firstName?.trim() || '';
+          if (fallbackName) {
+            F((prev) => ({ ...prev, name: prev.name || fallbackName }));
+          }
+        }
+      })
+      .catch(() => {
+        if (!alive) return;
+        const fallbackName = clerkUser?.fullName?.trim() || clerkUser?.firstName?.trim() || '';
+        if (fallbackName) {
+          F((prev) => ({ ...prev, name: prev.name || fallbackName }));
+        }
+      });
+    return () => {
+      alive = false;
+    };
+  }, [user, session?.id, slug, call, clerkUser?.fullName, clerkUser?.firstName]);
 
   useEffect(() => {
     const saved = sessionStorage.getItem('booking:' + slug);
@@ -124,7 +180,7 @@ export default function Booking({ params }: { params: Promise<{ slug: string }> 
   async function confirm() {
     if (!user) {
       location.assign(
-        '/entrar?next=' +
+        '/entrar?mode=signup&next=' +
           encodeURIComponent('/b/' + slug + (chair && chair !== 'auto' ? '?p=' + chair : ''))
       );
       return;
@@ -133,6 +189,10 @@ export default function Booking({ params }: { params: Promise<{ slug: string }> 
     B(true);
     E('');
     try {
+      const trimmedName = profile.name.trim();
+      if (trimmedName.length < 2) {
+        throw new Error('Informe seu nome completo.');
+      }
       const created = await call('book', {
         slug,
         professional: slot.professional || shop?.professional,
@@ -140,7 +200,7 @@ export default function Booking({ params }: { params: Promise<{ slug: string }> 
         period,
         day,
         start: slot.start,
-        name: profile.name,
+        name: trimmedName,
         phone: phone(profile.phone),
         request_id: crypto.randomUUID(),
       });
@@ -159,6 +219,7 @@ export default function Booking({ params }: { params: Promise<{ slug: string }> 
     }
   }
 
+  const returnPath = '/b/' + slug + (chair && chair !== 'auto' ? '?p=' + chair : '');
   const chosen = shop?.services.filter((s: Row) => selected.includes(s.id)) || [];
   const duration = chosen.reduce((n: number, s: Row) => n + s.duration, 0);
   const range = (p: string) => {
@@ -187,6 +248,7 @@ export default function Booking({ params }: { params: Promise<{ slug: string }> 
   ].filter((item) => range(item.key));
 
   const currentStep = !selected.length ? 1 : !period ? 2 : 3;
+  const userEmail = clerkUser?.primaryEmailAddress?.emailAddress || '';
 
   return (
     <main className="booking">
@@ -194,9 +256,13 @@ export default function Booking({ params }: { params: Promise<{ slug: string }> 
         <Link className="brand" href="/">
           <BrandLogo variant="dark" height={31} />
         </Link>
-        <Link className="btn small" href="/meus-horarios">
-          <CalendarDays size={14} /> Meus horários
-        </Link>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {user && (
+            <Link className="btn small" href="/meus-horarios">
+              <CalendarDays size={14} /> Meus horários
+            </Link>
+          )}
+        </div>
       </header>
 
       {!shop ? (
@@ -235,7 +301,30 @@ export default function Booking({ params }: { params: Promise<{ slug: string }> 
             )}
           </section>
 
-          {shop.professionals?.length > 1 && (
+          {user && !success && (
+            <div className="booking-account-strip">
+              <span>
+                <CheckCircle2 size={14} />
+                Conectado{userEmail ? ` como ${userEmail}` : ''}
+              </span>
+              <button
+                type="button"
+                className="booking-switch-btn"
+                onClick={async () => {
+                  try {
+                    sessionStorage.removeItem('booking:' + slug);
+                  } catch {}
+                  await signOut();
+                  F({ name: '', phone: '' });
+                  setProfileSaved(false);
+                }}
+              >
+                <LogOut size={13} /> Trocar conta
+              </button>
+            </div>
+          )}
+
+          {user && !success && shop.professionals?.length > 1 && (
             <div className="booking-chair-bar">
               <label className="booking-chair-select">
                 <span>
@@ -261,39 +350,60 @@ export default function Booking({ params }: { params: Promise<{ slug: string }> 
           )}
 
           {!user ? (
-            <section className="card booking-access">
-              <div className="booking-access-badge">
-                <Scissors size={18} />
+            <section className="card booking-auth-gate" aria-label="Acesse sua conta para agendar">
+              <div className="booking-auth-header">
+                <h2>
+                  {user === null
+                    ? 'Verificando seu acesso…'
+                    : authTab === 'signup'
+                      ? `Crie sua conta para agendar em ${shop.name}`
+                      : `Entre para agendar em ${shop.name}`}
+                </h2>
+                <p>
+                  Entre rapidinho com <strong>Google ou e-mail</strong>. Na primeira vez você informa
+                  seu nome e WhatsApp com DDD — nas próximas visitas o sistema já preenche tudo
+                  automaticamente.
+                </p>
+
+                {user !== null && (
+                  <div className="booking-auth-tabs" role="tablist" aria-label="Tipo de acesso">
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={authTab === 'signup'}
+                      className={authTab === 'signup' ? 'is-active' : ''}
+                      onClick={() => setAuthTab('signup')}
+                    >
+                      Criar conta grátis
+                    </button>
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={authTab === 'signin'}
+                      className={authTab === 'signin' ? 'is-active' : ''}
+                      onClick={() => setAuthTab('signin')}
+                    >
+                      Já tenho conta
+                    </button>
+                  </div>
+                )}
               </div>
-              <h2>{user === null ? 'Verificando seu acesso…' : 'Acesse sua conta para agendar'}</h2>
-              <p>
-                Depois de entrar, você escolhe os serviços, o período e o horário em {shop.name}.
-                Sua conta vale para todas as barbearias da Kronner.
-              </p>
+
               {user !== null && (
-                <div className="actions">
-                  <Link
-                    className="btn primary"
-                    href={
-                      '/entrar?mode=signup&next=' +
-                      encodeURIComponent(
-                        '/b/' + slug + (chair && chair !== 'auto' ? '?p=' + chair : '')
-                      )
-                    }
-                  >
-                    Criar minha conta <ArrowRight size={15} />
-                  </Link>
-                  <Link
-                    className="btn"
-                    href={
-                      '/entrar?next=' +
-                      encodeURIComponent(
-                        '/b/' + slug + (chair && chair !== 'auto' ? '?p=' + chair : '')
-                      )
-                    }
-                  >
-                    Já tenho conta
-                  </Link>
+                <div className="booking-clerk-box">
+                  {authTab === 'signup' ? (
+                    <SignUp
+                      routing="hash"
+                      signInUrl={'/entrar?mode=signin&next=' + encodeURIComponent(returnPath)}
+                      forceRedirectUrl={returnPath}
+                    />
+                  ) : (
+                    <SignIn
+                      routing="hash"
+                      signUpUrl={'/entrar?mode=signup&next=' + encodeURIComponent(returnPath)}
+                      forceRedirectUrl={returnPath}
+                    />
+                  )}
                 </div>
               )}
             </section>
@@ -311,7 +421,8 @@ export default function Booking({ params }: { params: Promise<{ slug: string }> 
                 <strong>{money(chosen.reduce((n: number, s: Row) => n + s.price, 0))}</strong>
               </p>
               <p>
-                A confirmação fica aqui e em Meus horários. Não enviamos lembretes por WhatsApp.
+                A confirmação fica aqui e em Meus horários. Você pode remarcar ou cancelar por lá
+                dentro do prazo da barbearia.
               </p>
               <Link className="btn primary" href="/meus-horarios">
                 Ver meus agendamentos <ArrowRight size={15} />
@@ -481,20 +592,52 @@ export default function Booking({ params }: { params: Promise<{ slug: string }> 
                           : ''}
                       </span>
                     </p>
+                    {profileSaved ? (
+                      <p className="booking-autofill-note">
+                        <CheckCircle2 size={13} />
+                        <span>
+                          Seus dados foram preenchidos automaticamente. Se trocou de número, apague
+                          e digite o novo — atualizamos no cadastro da barbearia.
+                        </span>
+                      </p>
+                    ) : (
+                      <p className="booking-autofill-note is-first">
+                        Informe seu nome e telefone uma única vez — nas próximas visitas
+                        preencheremos automaticamente.
+                      </p>
+                    )}
                     <label>
                       Seu nome
                       <input
+                        placeholder="Ex.: Lucas Silva"
+                        autoComplete="name"
                         value={profile.name}
                         onChange={(e) => F({ ...profile, name: e.target.value })}
                       />
                     </label>
                     <label>
                       Telefone com DDD
-                      <input
-                        type="tel"
-                        value={profile.phone}
-                        onChange={(e) => F({ ...profile, phone: e.target.value })}
-                      />
+                      <div className="booking-input-clearable">
+                        <input
+                          type="tel"
+                          inputMode="tel"
+                          autoComplete="tel"
+                          placeholder="(34) 99999-9999"
+                          value={profile.phone}
+                          onChange={(e) => F({ ...profile, phone: e.target.value })}
+                        />
+                        {profile.phone && (
+                          <button
+                            type="button"
+                            className="booking-clear-field"
+                            aria-label="Apagar telefone para digitar outro número"
+                            title="Apagar e digitar novo número"
+                            onClick={() => F({ ...profile, phone: '' })}
+                          >
+                            <X size={14} />
+                          </button>
+                        )}
+                      </div>
                     </label>
                   </div>
                 )}
@@ -509,8 +652,7 @@ export default function Booking({ params }: { params: Promise<{ slug: string }> 
                   disabled={!slot || busy}
                   onClick={confirm}
                 >
-                  {busy ? 'Aguarde…' : user ? 'Confirmar horário' : 'Entrar e confirmar'}{' '}
-                  <ArrowRight size={15} />
+                  {busy ? 'Aguarde…' : 'Confirmar horário'} <ArrowRight size={15} />
                 </button>
                 <small>
                   Pagamento realizado diretamente na barbearia. Cancelamento até{' '}
