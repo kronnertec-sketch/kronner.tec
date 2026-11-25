@@ -6,7 +6,7 @@ import { CookieConsent } from '@/components/CookieConsent';
 export const metadata: Metadata = {
   title: 'Kronner · Tempo para o seu talento',
   description:
-    'Agenda por cadeira, link público para clientes, feriados automáticos pelo CEP e caixa com PDV para barbearias.',
+    'Agenda por cadeira, link público para clientes, feriados automáticos pelo CEP e financeiro com comissões para barbearias.',
   icons: {
     icon: '/kroner.svg',
   },
