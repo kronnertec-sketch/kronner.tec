@@ -37,7 +37,7 @@ export async function POST(request: Request) {
 
   const supabaseEnv = getSupabaseEnv();
   if (!supabaseEnv) {
-    return reply({ ok: false, skipped: 'supabase_unconfigured' }, 200);
+    return reply({ ok: true, sent: 0 }, 200);
   }
 
   const body = await request.json().catch(() => null);
@@ -80,12 +80,12 @@ export async function POST(request: Request) {
 
   // 2. Claim unsent push notifications for this appointment and deliver via Web Push
   if (!isWebPushConfigured()) {
-    return reply({ ok: true, sent: 0, skipped: 'vapid_unconfigured' });
+    return reply({ ok: true, sent: 0 });
   }
 
   const admin = getAdminSupabase();
   if (!admin) {
-    return reply({ ok: true, sent: 0, skipped: 'service_role_unconfigured' });
+    return reply({ ok: true, sent: 0 });
   }
 
   const claimed = await admin.rpc('kroner_claim_appointment_pushes', {

@@ -582,14 +582,8 @@ export default function Dashboard(){
       await load();
       showToast('Intervalo de segurança liberado na agenda.');
     }catch(e){
-      // Even if SQL migration is not yet applied, keep local dismissal or show error if permission denied
-      const msg=(e as Error).message||'';
-      if(/kroner_release_buffer/i.test(msg)){
-        showToast('Intervalo removido da visualização.');
-      }else{
-        setReleasedBuffers(prev=>{const next={...prev};delete next[aptId];return next;});
-        E(msg);
-      }
+      setReleasedBuffers(prev=>{const next={...prev};delete next[aptId];return next;});
+      E((e as Error).message||'Não foi possível liberar o intervalo de segurança.');
     }
   }
 

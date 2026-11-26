@@ -101,16 +101,40 @@ export async function POST(request: Request) {
   let shop: string | null = null;
   let persistedCustomerId: string | null = null;
   let extraChairsInShop = 0;
+  let localTrialEnd: string | null = null;
+  let localSubStatus: string | null = null;
+  let phoneRecorded = false;
+  let phoneTrialClaimed = false;
 
   const ctxRes = await api.rpc('kroner_billing_context');
   if (!ctxRes.error && ctxRes.data && typeof ctxRes.data === 'object') {
-    const ctx = ctxRes.data as { shop?: unknown; stripeCustomerId?: unknown; extraChairs?: unknown };
+    const ctx = ctxRes.data as {
+      shop?: unknown;
+      stripeCustomerId?: unknown;
+      extraChairs?: unknown;
+      localTrialEnd?: unknown;
+      localSubStatus?: unknown;
+      phoneRecorded?: unknown;
+      phoneTrialClaimed?: unknown;
+    };
     if (typeof ctx.shop === 'string') shop = ctx.shop;
     if (typeof ctx.stripeCustomerId === 'string' && ctx.stripeCustomerId.startsWith('cus_')) {
       persistedCustomerId = ctx.stripeCustomerId;
     }
     if (typeof ctx.extraChairs === 'number' && Number.isFinite(ctx.extraChairs)) {
       extraChairsInShop = Math.max(0, Math.min(100, Math.trunc(ctx.extraChairs)));
+    }
+    if (typeof ctx.localTrialEnd === 'string' && !Number.isNaN(Date.parse(ctx.localTrialEnd))) {
+      localTrialEnd = ctx.localTrialEnd;
+    }
+    if (typeof ctx.localSubStatus === 'string') {
+      localSubStatus = ctx.localSubStatus;
+    }
+    if (ctx.phoneRecorded === true) {
+      phoneRecorded = true;
+    }
+    if (ctx.phoneTrialClaimed === true) {
+      phoneTrialClaimed = true;
     }
   } else {
     const ownerRes = await api.rpc('kroner_billing_owner');
@@ -188,13 +212,16 @@ export async function POST(request: Request) {
     );
     const seat = subscription?.items.data.find(i => i.price.id === seatPrice);
 
-    const periodEndUnix = subscription
+    const rawPeriodEndUnix = subscription
       ? subscription.items.data.reduce<number | null>((acc, item) => {
           const end = item.current_period_end;
           if (typeof end !== 'number') return acc;
           return acc === null ? end : Math.max(acc, end);
         }, null)
       : null;
+    const periodEndUnix =
+      rawPeriodEndUnix ??
+      (subscription && typeof subscription.trial_end === 'number' ? subscription.trial_end : null);
 
     const latestBaseHistory = history.data.find(s =>
       s.items.data.some(i => i.price.id === basePrice)
@@ -223,6 +250,7 @@ export async function POST(request: Request) {
       return reply({
         status: subscription?.status || 'sem_assinatura',
         extras: subscription ? seat?.quantity || 0 : extraChairsInShop,
+        minExtras: extraChairsInShop,
         trialEnd: subscription?.trial_end,
       });
     }
@@ -242,6 +270,15 @@ export async function POST(request: Request) {
       const count = body.quantity;
       if (!Number.isSafeInteger(count) || count < 0 || count > 100) {
         return reply({ error: 'Informe de 0 a 100 cadeiras adicionais.' }, 400);
+      }
+      // [AUDIT 8A] Never allow downgrading paid seats below currently active professionals + pending invites
+      if (count < extraChairsInShop) {
+        return reply(
+          {
+            error: `Você possui ${extraChairsInShop} cadeira(s) adicional(is) ativa(s) ou com convite pendente. Desative os excedentes na aba Funcionários antes de reduzir a assinatura.`,
+          },
+          409
+        );
       }
       // [MÉDIA-04] Cap cardless trial subscriptions at 4 extra chairs (5 total) until payment method/active
       if (subscription.status === 'trialing' && !subscription.default_payment_method && count > 4) {
@@ -273,11 +310,13 @@ export async function POST(request: Request) {
         payment_behavior: 'error_if_incomplete',
       });
 
-      const updatedPeriodEnd = updated.items.data.reduce<number | null>((acc, i) => {
+      const updatedRawPeriodEnd = updated.items.data.reduce<number | null>((acc, i) => {
         const end = i.current_period_end;
         if (typeof end !== 'number') return acc;
         return acc === null ? end : Math.max(acc, end);
       }, null);
+      const updatedPeriodEnd =
+        updatedRawPeriodEnd ?? (typeof updated.trial_end === 'number' ? updated.trial_end : null);
 
       const synced = await syncShopSubscription({
         shop,
@@ -319,7 +358,24 @@ export async function POST(request: Request) {
       lineItems.push({ price: seatPrice, quantity: extraChairsInShop });
     }
 
-    const eligible = !history.data.some(s => s.items.data.some(i => i.price.id === basePrice));
+    // [AUDIT 10] Prevent double-trial stacking (local DB trial + fresh 15d Stripe trial) and phone reuse
+    const stripeHasHistory = history.data.some(s => s.items.data.some(i => i.price.id === basePrice));
+    const localTrialEndUnix =
+      localSubStatus === 'trialing' && localTrialEnd
+        ? Math.floor(Date.parse(localTrialEnd) / 1000)
+        : null;
+    const nowUnix = Math.floor(Date.now() / 1000);
+    // Stripe requires trial_end to be at least 48h in the future; honor only remaining local trial window
+    // and only when the shop has already recorded a valid phone not previously claimed by another shop.
+    const remainingTrialEndUnix =
+      !stripeHasHistory &&
+      phoneRecorded &&
+      !phoneTrialClaimed &&
+      localTrialEndUnix !== null &&
+      localTrialEndUnix - nowUnix >= 48 * 3600
+        ? localTrialEndUnix
+        : null;
+
     const session = await stripe.checkout.sessions.create(
       {
         customer: customer.id,
@@ -328,17 +384,30 @@ export async function POST(request: Request) {
         mode: 'subscription',
         line_items: lineItems,
         allowed_payment_method_types: ['card'],
-        payment_method_collection: eligible ? 'if_required' : 'always',
+        payment_method_collection: remainingTrialEndUnix ? 'if_required' : 'always',
         subscription_data: {
           metadata: { kroner_shop: shop },
-          ...(eligible
-            ? { trial_period_days: 15, trial_settings: { end_behavior: { missing_payment_method: 'cancel' } } }
+          ...(remainingTrialEndUnix
+            ? {
+                trial_end: remainingTrialEndUnix,
+                trial_settings: { end_behavior: { missing_payment_method: 'cancel' } },
+              }
             : {}),
         },
         success_url: origin + '/painel',
         cancel_url: origin + '/painel',
       },
-      { idempotencyKey: 'checkout-' + shop + '-' + extraChairsInShop + '-' + Math.floor(Date.now() / 300000) }
+      {
+        idempotencyKey:
+          'checkout-' +
+          shop +
+          '-' +
+          extraChairsInShop +
+          '-' +
+          (remainingTrialEndUnix ? 't' : 'p') +
+          '-' +
+          Math.floor(Date.now() / 300000),
+      }
     );
     return reply({ url: session.url });
   } catch {

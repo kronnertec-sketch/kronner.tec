@@ -64,11 +64,13 @@ async function syncFromSubscription(
   const seatItem = sub.items.data.find(item => item.price.id === seatPrice);
   const extraSeats = seatItem?.quantity ?? 0;
 
-  const periodEndUnix = sub.items.data.reduce<number | null>((acc, item) => {
+  const rawPeriodEndUnix = sub.items.data.reduce<number | null>((acc, item) => {
     const end = item.current_period_end;
     if (typeof end !== 'number') return acc;
     return acc === null ? end : Math.max(acc, end);
   }, null);
+  const periodEndUnix =
+    rawPeriodEndUnix ?? (typeof sub.trial_end === 'number' ? sub.trial_end : null);
 
   const synced = await syncShopSubscription({
     shop,
@@ -81,6 +83,72 @@ async function syncFromSubscription(
   });
   if (!synced) {
     throw new Error('Falha ao persistir assinatura no banco de dados.');
+  }
+}
+
+function isStripeNotFound(err: unknown): boolean {
+  if (!err || typeof err !== 'object') return false;
+  const e = err as { statusCode?: unknown; code?: unknown };
+  return e.statusCode === 404 || e.code === 'resource_missing';
+}
+
+async function revokeShopFromCustomer(
+  stripe: Stripe,
+  customerId: string | null,
+  status: 'refunded' | 'disputed',
+  eventCreated: number
+) {
+  if (!customerId) return;
+  let customer: Stripe.Customer | Stripe.DeletedCustomer;
+  try {
+    customer = await stripe.customers.retrieve(customerId);
+  } catch (err) {
+    if (isStripeNotFound(err)) return;
+    throw err;
+  }
+  if ('deleted' in customer && customer.deleted) return;
+
+  const { basePrice } = await resolvePrices(stripe);
+  const subs = await stripe.subscriptions.list({ customer: customerId, status: 'all', limit: 100 });
+  const kronerSubs = subs.data.filter(s => s.items.data.some(i => i.price.id === basePrice));
+
+  const customerShop = customer.metadata?.kroner_shop;
+  const subShop = kronerSubs.find(
+    s => typeof s.metadata?.kroner_shop === 'string' && UUID_RE.test(s.metadata.kroner_shop)
+  )?.metadata?.kroner_shop;
+  const shop =
+    typeof customerShop === 'string' && UUID_RE.test(customerShop)
+      ? customerShop
+      : typeof subShop === 'string' && UUID_RE.test(subShop)
+        ? subShop
+        : null;
+  if (!shop) return;
+
+  let latestSubId: string | null = kronerSubs[0]?.id ?? null;
+
+  for (const s of kronerSubs) {
+    if (['active', 'trialing', 'past_due', 'unpaid'].includes(s.status)) {
+      try {
+        await stripe.subscriptions.cancel(s.id);
+      } catch (err) {
+        // Ignore only if already missing/canceled; rethrow transient errors so Stripe retries
+        if (!isStripeNotFound(err)) throw err;
+      }
+      latestSubId = s.id;
+    }
+  }
+
+  const synced = await syncShopSubscription({
+    shop,
+    stripeCustomerId: customerId,
+    stripeSubscriptionId: latestSubId,
+    status,
+    seatLimit: 1,
+    currentPeriodEnd: new Date().toISOString(),
+    eventCreated,
+  });
+  if (!synced) {
+    throw new Error('Falha ao revogar assinatura no banco de dados.');
   }
 }
 
@@ -142,6 +210,36 @@ export async function POST(request: Request) {
           const subId = typeof subRef === 'string' ? subRef : subRef.id;
           const sub = await stripe.subscriptions.retrieve(subId);
           await syncFromSubscription(stripe, sub, event.created);
+        }
+        break;
+      }
+      case 'charge.refunded': {
+        const charge = event.data.object as Stripe.Charge;
+        // Full refund revokes entitlement and cancels any active Kronner subscription for the customer
+        if (charge.refunded === true) {
+          const customerId =
+            typeof charge.customer === 'string' ? charge.customer : charge.customer?.id ?? null;
+          await revokeShopFromCustomer(stripe, customerId, 'refunded', event.created);
+        }
+        break;
+      }
+      case 'charge.dispute.created':
+      case 'charge.dispute.funds_withdrawn': {
+        const dispute = event.data.object as Stripe.Dispute;
+        const chargeId = typeof dispute.charge === 'string' ? dispute.charge : dispute.charge?.id;
+        if (chargeId) {
+          let charge: Stripe.Charge | null = null;
+          try {
+            charge = await stripe.charges.retrieve(chargeId);
+          } catch (err) {
+            if (!isStripeNotFound(err)) throw err;
+          }
+          const customerId = !charge?.customer
+            ? null
+            : typeof charge.customer === 'string'
+              ? charge.customer
+              : charge.customer.id;
+          await revokeShopFromCustomer(stripe, customerId, 'disputed', event.created);
         }
         break;
       }

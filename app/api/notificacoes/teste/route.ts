@@ -26,7 +26,7 @@ export async function POST(request: Request) {
 
   if (!isWebPushConfigured()) {
     return reply(
-      { error: 'Notificações push ainda não estão configuradas no servidor (chaves VAPID).' },
+      { error: 'Notificações push ainda não estão disponíveis no servidor.' },
       503
     );
   }
@@ -52,11 +52,26 @@ export async function POST(request: Request) {
 
   const check = await userClient.rpc('kroner_notifications', {
     action: 'has_subscription',
-    payload: { endpoint },
+    payload: { endpoint, consume_test_quota: true },
   });
 
-  if (check.error || !check.data?.registered) {
+  if (check.error) {
+    const isQuota =
+      check.error.code === 'P0001' && /aguarde|limite/i.test(check.error.message || '');
+    return reply(
+      {
+        error: isQuota
+          ? 'Aguarde alguns minutos antes de enviar outro teste.'
+          : 'Ative as notificações primeiro neste aparelho.',
+      },
+      isQuota ? 429 : 403
+    );
+  }
+  if (!check.data?.registered) {
     return reply({ error: 'Ative as notificações primeiro neste aparelho.' }, 403);
+  }
+  if (check.data?.entitled === false) {
+    return reply({ error: 'Regularize sua assinatura para enviar alertas de teste.' }, 403);
   }
 
   const dbUserId = typeof check.data?.userId === 'string' ? check.data.userId : endpoint;

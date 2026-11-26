@@ -3,6 +3,20 @@ import { useMemo, useCallback } from 'react';
 import { useSession } from '@clerk/react';
 import { createClient } from '@supabase/supabase-js';
 
+/** Only surface intentional Postgres P0001 business exceptions to the browser UI. */
+export function formatRpcError(error: { code?: string | null; message?: string | null }): Error {
+  const msg = typeof error.message === 'string' ? error.message.trim() : '';
+  const isSafeBusinessError =
+    error.code === 'P0001' &&
+    msg.length > 0 &&
+    !/kroner_private|violates|syntax error|relation "|column "|operator does not exist/i.test(msg);
+  return new Error(
+    isSafeBusinessError
+      ? msg
+      : 'Não foi possível concluir a operação. Revise os dados e tente novamente.'
+  );
+}
+
 /** Supabase validates the Clerk JWT through its registered third-party provider. */
 export function useApi() {
   const { session } = useSession();
@@ -27,17 +41,17 @@ export function useApi() {
       }
       if (action === 'client_reschedule') {
         const { data, error } = await client.rpc('kroner_client_reschedule', payload);
-        if (error) throw new Error(error.message);
+        if (error) throw formatRpcError(error);
         return data;
       }
       if (action === 'client_profile') {
         const { data, error } = await client.rpc('kroner_client_profile', payload);
-        if (error) throw new Error(error.message);
+        if (error) throw formatRpcError(error);
         return data;
       }
       if (action === 'release_buffer') {
         const { data, error } = await client.rpc('kroner_release_buffer', payload);
-        if (error) throw new Error(error.message);
+        if (error) throw formatRpcError(error);
         return data;
       }
       const { data, error } = await client.rpc(
@@ -52,7 +66,7 @@ export function useApi() {
                 : 'kroner_api',
         { action: action.replace(/^(team|pos|manage|notify):/, ''), payload }
       );
-      if (error) throw new Error(error.message);
+      if (error) throw formatRpcError(error);
       return data;
     },
     [client]

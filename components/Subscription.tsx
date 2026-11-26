@@ -8,6 +8,7 @@ export default function Subscription(){
  const [busy,setBusy]=useState(false);
  const [message,setMessage]=useState('');
  const [count,setCount]=useState(0);
+ const [minExtras,setMinExtras]=useState(0);
  const [active,setActive]=useState(false);
  const [isTestAccount,setIsTestAccount]=useState(false);
 
@@ -49,6 +50,7 @@ export default function Subscription(){
      }
      if(action==='status'){
        setCount(result.extras);
+       setMinExtras(typeof result.minExtras==='number'?Math.max(0,result.minExtras):0);
        setActive(['active','trialing'].includes(result.status));
        const names:Record<string,string>={
          active:'Ativa',
@@ -56,7 +58,9 @@ export default function Subscription(){
          sem_assinatura:'Sem assinatura',
          past_due:'Pagamento pendente',
          paused:'Pausada',
-         unpaid:'Em aberto'
+         unpaid:'Em aberto',
+         disputed:'Suspensa por contestação de pagamento',
+         refunded:'Cancelada após reembolso'
        };
        setMessage(names[result.status]||result.status);
      }else{
@@ -90,7 +94,8 @@ export default function Subscription(){
      {active && !isTestAccount && (
        <form onSubmit={e=>{e.preventDefault();if(confirm('Confirmar a nova quantidade de cadeiras e o ajuste proporcional até a renovação?'))submit('cadeiras')}}>
          <label>Cadeiras adicionais
-           <input type="number" min="0" max="100" required value={count} onChange={e=>setCount(e.target.valueAsNumber)}/>
+           <input type="number" min={minExtras} max="100" required value={count} onChange={e=>setCount(e.target.valueAsNumber)}/>
+           {minExtras>0&&<small>Mínimo atual: {minExtras} (cadeiras ativas ou convites pendentes na equipe).</small>}
          </label>
          <button className="btn" disabled={busy}>Atualizar quantidade</button>
        </form>

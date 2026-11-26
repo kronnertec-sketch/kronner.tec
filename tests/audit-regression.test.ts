@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { isAllowedPushEndpoint } from '../lib/server-push';
+import { formatRpcError } from '../lib/supabase';
 import { today } from '../lib/domain';
 
 test('isAllowedPushEndpoint allows only official browser Web Push services and blocks SSRF', () => {
@@ -115,4 +116,93 @@ test('Overtime slots SQL migration respects overtimeMinutes and preserves buffer
     sql.includes('while cursor_t < period_hi'),
     'chair_slots must prevent bookings starting at or after closing/period_hi'
   );
+});
+
+test('formatRpcError allows safe P0001 business messages and masks raw Postgres errors', () => {
+  assert.equal(
+    formatRpcError({ code: 'P0001', message: 'Já existe um atendimento nesse horário. Escolha outro.' }).message,
+    'Já existe um atendimento nesse horário. Escolha outro.'
+  );
+  assert.equal(
+    formatRpcError({ code: '22P02', message: 'invalid input syntax for type uuid: "abc"' }).message,
+    'Não foi possível concluir a operação. Revise os dados e tente novamente.'
+  );
+  assert.equal(
+    formatRpcError({
+      code: '23514',
+      message: 'new row for relation "services" violates check constraint "services_duration_check"',
+    }).message,
+    'Não foi possível concluir a operação. Revise os dados e tente novamente.'
+  );
+  assert.equal(
+    formatRpcError({ code: '42883', message: 'operator does not exist: uuid = text' }).message,
+    'Não foi possível concluir a operação. Revise os dados e tente novamente.'
+  );
+  assert.equal(
+    formatRpcError({ code: 'P0001', message: 'error in kroner_private.shops relation "shops"' }).message,
+    'Não foi possível concluir a operação. Revise os dados e tente novamente.'
+  );
+});
+
+test('13-Point Security Audit SQL & API routes enforce all critical hardening invariants', () => {
+  const sql = fs.readFileSync(
+    path.join(process.cwd(), 'supabase/migrations/20261125070000_security_audit_13points.sql'),
+    'utf8'
+  );
+
+  // Point 8A (HIGH): active chairs <= seat_limit + fail-closed NULL + no grace on trialing
+  assert.ok(sql.includes('sub.current_period_end is not null'), 'shop_entitled must fail closed on NULL');
+  assert.match(sql, /sub\.status = 'trialing'\s+and sub\.current_period_end > now\(\)/, 'trialing must not have 3d grace');
+  assert.ok(sql.includes('<= sub.seat_limit'), 'shop_entitled must enforce active chairs <= seat_limit');
+
+  // Point 9A: no DECLARE-section payload casts in kroner_management / kroner_pos
+  assert.equal(sql.includes("op uuid := nullif(payload->>'request_id'"), false, 'DECLARE cast escapes EXCEPTION block');
+  assert.equal(sql.includes("discount int := coalesce(nullif(payload->>'discount'"), false, 'DECLARE cast escapes EXCEPTION block');
+
+  // Point 10 (MEDIUM): trial_claims phone ledger + RLS + REVOKE
+  assert.ok(sql.includes('create table if not exists kroner_private.trial_claims'), 'trial_claims table missing');
+  assert.ok(sql.includes('alter table kroner_private.trial_claims enable row level security'), 'trial_claims RLS missing');
+  assert.ok(sql.includes('revoke all on kroner_private.shop_subscriptions from public, anon, authenticated'), 'shop_subscriptions REVOKE missing');
+
+  // Point 4.1 (MEDIUM): employee workspace strips owner, fees, client user_id, and other prices
+  assert.ok(sql.includes("(to_jsonb(s) - 'owner')"), 'employee workspace must omit shop owner');
+  assert.ok(sql.includes("to_jsonb(x) - 'user_id'"), 'employee workspace must omit client user_id');
+  assert.ok(sql.includes("sv_item - 'price'"), 'employee workspace must strip non-finance appointment service prices');
+
+  // Point 4.2 + 9A: kroner_release_buffer uses uid uuid & authorizes before shop lock
+  const rb = sql.slice(sql.indexOf('create or replace function public.kroner_release_buffer'));
+  assert.ok(rb.includes('uid uuid := kroner_private.current_user_id();'), 'kroner_release_buffer must declare uid uuid');
+  assert.ok(
+    rb.indexOf('from kroner_private.professionals') < rb.indexOf('from kroner_private.shops where id = me.shop for update'),
+    'kroner_release_buffer must authorize caller before locking shops'
+  );
+
+  // Point 4.3: partner cannot assign partner role
+  assert.ok(sql.includes("if selected_role = 'partner' and me.role <> 'owner'"), 'partner promotion guard missing');
+
+  // Point 6.1 & 6.2: soft-deleted/inactive data & push cleanup
+  assert.ok(sql.includes("set status = 'inactive', invite_hash = null, email = null"), 'decline must clear email PII');
+  assert.ok(sql.includes('delete from kroner_private.push_subscriptions'), 'deactivate must purge push_subscriptions');
+  assert.ok(sql.includes("and pr.status = 'active'"), 'kroner_claim_appointment_pushes must verify active professional');
+
+  // No ambiguous SQL regressions & every SECURITY DEFINER pins search_path
+  assert.equal(sql.includes('to_jsonb(ch)'), false, 'ambiguous to_jsonb(ch) regression');
+  assert.equal(/where[^\n]*\band action\s*=/i.test(sql), false, 'unqualified action = regression');
+  const fnDecls = sql.match(/create or replace function[\s\S]*?as \$/gi) || [];
+  assert.ok(fnDecls.length >= 8, 'expected hardened functions in 13-point migration');
+  for (const decl of fnDecls) {
+    if (/security definer/i.test(decl)) {
+      assert.match(decl, /set search_path\s*(=|to)\s*''/i, `Missing search_path in: ${decl.slice(0, 80)}`);
+    }
+  }
+
+  // Point 8A + 10 + 11B in API routes
+  const billingRoute = fs.readFileSync(path.join(process.cwd(), 'app/api/assinatura/route.ts'), 'utf8');
+  assert.ok(billingRoute.includes('if (count < extraChairsInShop)'), 'cadeiras must reject count < extraChairsInShop');
+  assert.equal(billingRoute.includes('trial_period_days: 15'), false, 'must not grant unconditional fresh 15d Stripe trial');
+  assert.ok(billingRoute.includes('trial_end: remainingTrialEndUnix'), 'must cap Stripe trial to remaining local trial');
+
+  const webhookRoute = fs.readFileSync(path.join(process.cwd(), 'app/api/stripe/webhook/route.ts'), 'utf8');
+  assert.ok(webhookRoute.includes("case 'charge.refunded':"), 'webhook must handle charge.refunded');
+  assert.ok(webhookRoute.includes("case 'charge.dispute.created':"), 'webhook must handle charge.dispute.created');
 });

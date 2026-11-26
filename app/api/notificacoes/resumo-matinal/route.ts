@@ -95,7 +95,8 @@ export const POST = handleSchedule(async (metadata) => {
 
   const admin = getAdminSupabase();
   if (!admin) {
-    throw new Error('[resumo-matinal] SUPABASE_SERVICE_ROLE_KEY ausente.');
+    console.error('[resumo-matinal] SUPABASE_SERVICE_ROLE_KEY ausente.');
+    throw new Error('Morning summary service unavailable.');
   }
 
   const collected = await admin.rpc('kroner_collect_morning_summary', {
@@ -103,7 +104,8 @@ export const POST = handleSchedule(async (metadata) => {
   });
 
   if (collected.error || !Array.isArray(collected.data)) {
-    throw new Error(`[resumo-matinal] erro ao coletar resumo: ${collected.error?.message || 'dados inválidos'}`);
+    console.error('[resumo-matinal] erro ao coletar resumo:', collected.error?.message || 'dados inválidos');
+    throw new Error('Morning summary collection failed.');
   }
 
   const shops = collected.data as ShopMorningBrief[];

@@ -5,15 +5,28 @@ import { getSupabaseEnv, resolvePublicOrigin } from '@/lib/server-origin';
 export const dynamic = 'force-dynamic';
 
 const InviteSchema = z.object({
-  name: z.string().trim().min(2, 'Informe o nome do profissional (2 a 100 caracteres).').max(100),
-  email: z.string().trim().email('Informe um e-mail válido.').max(254),
+  name: z
+    .string({ message: 'Informe o nome do profissional (2 a 100 caracteres).' })
+    .trim()
+    .min(2, 'Informe o nome do profissional (2 a 100 caracteres).')
+    .max(100, 'Informe o nome do profissional (2 a 100 caracteres).'),
+  email: z
+    .string({ message: 'Informe um e-mail válido.' })
+    .trim()
+    .email('Informe um e-mail válido.')
+    .max(254, 'Informe um e-mail válido.'),
   role: z.enum(['partner', 'employee'], { message: 'Papel inválido.' }),
-  finance: z.boolean().optional(),
-  commission_enabled: z.boolean().optional(),
-  commission_bps: z.number().int().min(0).max(10000).optional(),
-  can_manage_memberships: z.boolean().optional(),
-  can_register_payment: z.boolean().optional(),
-  can_share_link: z.boolean().optional(),
+  finance: z.boolean({ message: 'Permissão financeira inválida.' }).optional(),
+  commission_enabled: z.boolean({ message: 'Configuração de comissão inválida.' }).optional(),
+  commission_bps: z
+    .number({ message: 'Percentual de comissão inválido.' })
+    .int('Percentual de comissão inválido.')
+    .min(0, 'Percentual de comissão inválido.')
+    .max(10000, 'Percentual de comissão inválido.')
+    .optional(),
+  can_manage_memberships: z.boolean({ message: 'Permissão de mensalistas inválida.' }).optional(),
+  can_register_payment: z.boolean({ message: 'Permissão de pagamentos inválida.' }).optional(),
+  can_share_link: z.boolean({ message: 'Permissão de link inválida.' }).optional(),
 });
 
 const SAFE_RPC_ERRORS = new Set([
@@ -21,6 +34,7 @@ const SAFE_RPC_ERRORS = new Set([
   'Sem vínculo ativo com a equipe.',
   'Somente a conta principal gerencia a equipe.',
   'Somente o proprietário ou sócio gerencia a equipe.',
+  'Somente o proprietário pode atribuir o papel de sócio.',
   'Confira nome, e-mail e papel.',
   'Limite de cadeiras do plano atingido. Adicione cadeiras na assinatura.',
   'Ative ou regularize sua assinatura para convidar profissionais.',
@@ -98,6 +112,9 @@ export async function POST(request: Request) {
     !/^[a-f0-9-]{36}$/i.test(shop)
   ) {
     return reply({ error: 'Somente o proprietário ou sócio gerencia a equipe.' }, 403);
+  }
+  if (parsed.data.role === 'partner' && role !== 'owner') {
+    return reply({ error: 'Somente o proprietário pode atribuir o papel de sócio.' }, 403);
   }
 
   if (isRateLimited(shop)) {
